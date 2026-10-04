@@ -12,6 +12,8 @@ python3 -m http.server 8000
 
 Abra `http://localhost:8000`.
 
+O workflow `.github/workflows/pages.yml` publica o app no GitHub Pages após as alterações. Na primeira vez, em **Settings → Pages**, selecione **GitHub Actions** como origem de publicação.
+
 ## Configuração Firebase
 
 1. No Firebase Console, confirme o provedor **Authentication → Sign-in method → Email/Password**.
