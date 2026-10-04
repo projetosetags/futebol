@@ -11,6 +11,8 @@ export const firebaseConfig = {
   measurementId: "G-409T38YPR0",
   adminUids: [
     "RutTVgdXfjdGrFFnbaYmpOO2nJi1",
-    "xptgdFErpMV5Ekxa3CRX2SBrdcy1"
+    "xptgdFErpMV5Ekxa3CRX2SBrdcy1",
+    "jmJvH0W7uwdCMlUeyJSWnC4Hd103",
+    "45AaXndEroRoLYEf1SDFMYBLXZw2"
   ]
 };
