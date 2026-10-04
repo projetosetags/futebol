@@ -44,6 +44,10 @@ export async function savePlayerData(uid, data) {
   if (!cloudEnabled) return;
   await firestore.setDoc(firestore.doc(db, 'playerData', uid), data);
 }
+export async function savePlayerAttendance(uid, attendanceChoices) {
+  if (!cloudEnabled) return;
+  await firestore.updateDoc(firestore.doc(db, 'playerData', uid), { attendanceChoices });
+}
 export async function signOutAdmin() {
   if (cloudEnabled) await authSdk.signOut(auth);
 }
