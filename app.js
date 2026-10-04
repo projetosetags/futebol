@@ -79,7 +79,7 @@ if(!cloudEnabled){render()}else{
  renderLogin();
  watchAuthState(async user=>{
   if(!user){currentUser=null;if(stopDataListener){stopDataListener();stopDataListener=null}state=structuredClone(initial);renderLogin(authMessage);authMessage='';return}
-  if(user.uid!==firebaseConfig.adminUid){authMessage='Esta conta não está autorizada para administrar o painel.';await signOutAdmin();return}
+  if(!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(user.uid)){authMessage='Esta conta não está autorizada para administrar o painel.';await signOutAdmin();return}
   authMessage='';currentUser=user;state=load();render();
   if(stopDataListener)stopDataListener();
   stopDataListener=listenToAppData(data=>{if(data&&Array.isArray(data.games)&&Array.isArray(data.players)){state=data;localStorage.setItem(KEY,JSON.stringify(state));render()}},()=>toast('Falha ao receber dados do Firebase. Confira o banco e as regras.'));
