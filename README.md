@@ -1,29 +1,38 @@
 # Futebol Society Gramado
 
-Painel administrativo para organizar jogos semanais, participantes, gramados, listas, pagamentos e comprovantes.
+Painel administrativo e área de jogador para organizar jogos semanais, times sugeridos, participantes, gramados, pagamentos, avisos e enquetes. O projeto usa Firebase Authentication e Cloud Firestore e funciona no plano Spark.
 
-## Começar
+## Executar localmente
 
-Abra os arquivos por um servidor web estático. Em desenvolvimento, por exemplo:
+Sirva os arquivos como site estático (os módulos Firebase são carregados pelo navegador):
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Acesse `http://localhost:8000/`. Sem Firebase configurado, os dados ficam no armazenamento local do navegador.
+Abra `http://localhost:8000`.
 
-## Firebase
+## Configuração Firebase
 
-1. Registre um app Web e coloque a configuração em `firebase-config.js`.
-2. Ative o provedor E-mail/senha no Firebase Authentication e crie o usuário administrador.
-3. Confira se cada UID autorizado corresponde à lista `adminUids` do arquivo `firebase-config.js` e às regras do Firestore.
-4. Crie o banco Cloud Firestore.
-5. Publique `firestore.rules` no Console Firebase. A regra permite acesso apenas ao UID administrador e nega o restante.
+1. No Firebase Console, confirme o provedor **Authentication → Sign-in method → Email/Password**.
+2. Em **Firestore Database → Rules**, substitua as regras pelas do arquivo `firestore.rules` e clique em **Publish**.
+3. A lista de administradores fica em `firebase-config.js` (`adminUids`) e também nas regras do Firestore. Só ajuste os UIDs ali se souber que a conta mudou.
+4. Selecione **Spark** para manter o projeto sem faturamento. O app não usa Firebase Storage. Imagens de avisos são compactadas e salvas nos documentos do Firestore; os comprovantes de pagamento ficam no dispositivo em que foram anexados.
 
-O aplicativo não usa Firebase Storage e não exige upgrade para Blaze. Dados dos jogos, participantes, pagamentos e configurações sincronizam pelo Firestore. Arquivos de comprovante são guardados no IndexedDB do navegador/dispositivo onde foram anexados; não são enviados à nuvem nem aparecem em outros dispositivos. É possível anexar imagem ou PDF de até 5 MB. Não inclua informações pessoais no código ou em commits públicos. A configuração Web não substitui regras de autenticação e acesso.
+## Acesso do jogador
 
-## Valores e locais iniciais
+O jogador escolhe **Jogador → Primeiro acesso**, informa primeiro nome e telefone e aguarda aprovação do administrador. Para aprovar, o nome e telefone precisam coincidir com um participante ativo cadastrado. Depois, o jogador entra com o primeiro nome e o mesmo telefone; a área exibe somente os próprios jogos, pagamentos pendentes e a chave PIX. O administrador confirma os pagamentos.
 
-O painel inicia com chave PIX por telefone `48 9 9191 4372`, jogo a R$ 20,00 e churrasco a R$ 7,00. O administrador pode alterar a chave PIX e os valores padrão em **Configurações**; cada jogo também permite ajustar seus próprios valores. Os locais iniciais são **Campo São João Futebol Clube** e **Arena Andrino**, editáveis na seção **Gramados**.
+O telefone funciona como senha conforme solicitado. Como essa senha é fácil de adivinhar por quem conhece o número, o acesso individual só é liberado após aprovação administrativa; evite reutilizar essa senha em outros serviços.
 
-O calendário inicial inclui as sextas de 09/10 a 27/11/2026 às 19h30 no Campo São João Futebol Clube. Em caso de chuva, cada partida fica programada para o sábado seguinte, às 14h30 na Arena Andrino. Na lista do jogo, o administrador registra a escolha informada por cada jogador: sexta (não vai se houver transferência) ou somente sábado.
+## Gestão
+
+- A agenda inicial contém jogos às sextas, 19h30, de 9 de outubro até 27 de novembro de 2026, com alternativa para sábado às 14h30 em caso de chuva.
+- O valor inicial é R$ 20 por jogo e R$ 7 de churrasco; chave PIX `48 9 9191 4372`.
+- Gramados, horários, valores e jogadores podem ser editados no painel.
+- Avisos vencidos deixam de aparecer e são apagados do Firestore quando um administrador abre o painel depois do prazo. Não há exclusão programada em segundo plano no plano Spark.
+- Enquetes e registro de votos são administrados pelo painel.
+
+## Dados importantes
+
+`appData/current` contém o cadastro completo e é acessível somente aos administradores. `playerData/{uid}` contém a visão financeira individual, com leitura restrita ao próprio usuário e aos administradores. `playerAccessRequests/{uid}` guarda os pedidos de aprovação.
