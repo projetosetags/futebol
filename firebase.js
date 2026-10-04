@@ -30,10 +30,10 @@ export async function signInPlayer(firstName, phone) {
   const digits = String(phone).replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
   return (await authSdk.signInWithEmailAndPassword(auth, playerEmail(firstName, digits), digits)).user;
 }
-export async function registerPlayer(firstName, phone) {
+export async function registerPlayer(firstName, phone, fullName = '', nickname = '') {
   const digits = String(phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
   const user = (await authSdk.createUserWithEmailAndPassword(auth, playerEmail(firstName, digits), digits)).user;
-  await firestore.setDoc(firestore.doc(db, 'playerAccessRequests', user.uid), { firstName: String(firstName).trim(), phone: digits, createdAt: new Date().toISOString(), status: 'pending' });
+  await firestore.setDoc(firestore.doc(db, 'playerAccessRequests', user.uid), { firstName: String(firstName).trim(), fullName: String(fullName || firstName).trim(), nickname: String(nickname || '').trim(), phone: digits, createdAt: new Date().toISOString(), status: 'pending' });
   return user;
 }
 export function listenToPlayerData(uid, onData, onError) {
