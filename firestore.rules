@@ -30,7 +30,7 @@ service cloud.firestore {
         && request.resource.data.firstName.size() <= 30
         && request.resource.data.fullName.size() <= 100
         && request.resource.data.nickname.size() <= 40
-        && request.resource.data.phone.matches('^[0-9]{10,11}$')
+        && request.resource.data.phone.matches('^[0-9]{9,11}$')
         && request.resource.data.createdAt is string
         && request.resource.data.status == 'pending';
       allow read, update, delete: if isAdmin();
