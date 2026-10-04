@@ -21,6 +21,29 @@ export function watchAuthState(onUser, onError) {
 export async function signInAdmin(email, password) {
   return (await authSdk.signInWithEmailAndPassword(auth, email, password)).user;
 }
+function playerEmail(firstName, phone) {
+  const name = String(firstName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const digits = String(phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
+  return `${name}.${digits}@players.futebol-society.com`;
+}
+export async function signInPlayer(firstName, phone) {
+  const digits = String(phone).replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
+  return (await authSdk.signInWithEmailAndPassword(auth, playerEmail(firstName, digits), digits)).user;
+}
+export async function registerPlayer(firstName, phone) {
+  const digits = String(phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
+  const user = (await authSdk.createUserWithEmailAndPassword(auth, playerEmail(firstName, digits), digits)).user;
+  await firestore.setDoc(firestore.doc(db, 'playerAccessRequests', user.uid), { firstName: String(firstName).trim(), phone: digits, createdAt: new Date().toISOString(), status: 'pending' });
+  return user;
+}
+export function listenToPlayerData(uid, onData, onError) {
+  if (!cloudEnabled) return () => {};
+  return firestore.onSnapshot(firestore.doc(db, 'playerData', uid), snapshot => onData(snapshot.exists() ? snapshot.data() : null), onError);
+}
+export async function savePlayerData(uid, data) {
+  if (!cloudEnabled) return;
+  await firestore.setDoc(firestore.doc(db, 'playerData', uid), data);
+}
 export async function signOutAdmin() {
   if (cloudEnabled) await authSdk.signOut(auth);
 }
@@ -33,4 +56,19 @@ export function listenToAppData(onData, onError) {
 export async function saveAppData(data) {
   if (!cloudEnabled) return;
   await firestore.setDoc(firestore.doc(db, 'appData', 'current'), data);
+}
+export function listenToRecords(collectionName, onData, onError) {
+  if (!cloudEnabled) return () => {};
+  return firestore.onSnapshot(firestore.collection(db, collectionName), snapshot => {
+    onData(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
+  }, onError);
+}
+export async function saveRecord(collectionName, record) {
+  if (!cloudEnabled) return;
+  const { id, ...data } = record;
+  await firestore.setDoc(firestore.doc(db, collectionName, id), data);
+}
+export async function deleteRecord(collectionName, id) {
+  if (!cloudEnabled) return;
+  await firestore.deleteDoc(firestore.doc(db, collectionName, id));
 }
