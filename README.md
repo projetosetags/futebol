@@ -10,7 +10,7 @@ Abra os arquivos por um servidor web estático. Em desenvolvimento, por exemplo:
 python3 -m http.server 8000
 ```
 
-Acesse `http://localhost:8000/futebol-society-gramado-public/`. Sem Firebase configurado, os dados ficam no armazenamento local do navegador.
+Acesse `http://localhost:8000/`. Sem Firebase configurado, os dados ficam no armazenamento local do navegador.
 
 ## Firebase
 
