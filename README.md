@@ -40,3 +40,11 @@ O telefone funciona como senha conforme solicitado. Como essa senha é fácil de
 ## Dados importantes
 
 `appData/current` contém o cadastro completo e é acessível somente aos administradores. `playerData/{uid}` contém a visão financeira individual, com leitura restrita ao próprio usuário e aos administradores. `playerAccessRequests/{uid}` guarda os pedidos de aprovação.
+
+
+## Links de acesso
+
+- Painel administrativo: https://projetosetags.github.io/futebol/
+- Área restrita dos jogadores: https://projetosetags.github.io/futebol/jogador.html
+
+Jogadores entram com o primeiro nome e os 9 dígitos finais do telefone como senha. Se o cadastro foi solicitado anteriormente com DDD, basta usar os 9 dígitos finais. Administradores continuam usando o painel principal.
