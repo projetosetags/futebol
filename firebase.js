@@ -21,18 +21,31 @@ export function watchAuthState(onUser, onError) {
 export async function signInAdmin(email, password) {
   return (await authSdk.signInWithEmailAndPassword(auth, email, password)).user;
 }
+function playerPhoneDigits(phone) {
+  const digits = String(phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
+  return digits.length > 9 ? digits.slice(-9) : digits;
+}
+function playerStoredPhone(phone) {
+  return String(phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
+}
 function playerEmail(firstName, phone) {
   const name = String(firstName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const digits = String(phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
-  return `${name}.${digits}@players.futebol-society.com`;
+  return `${name}.${playerPhoneDigits(phone)}@players.futebol-society.com`;
 }
 export async function signInPlayer(firstName, phone) {
-  const digits = String(phone).replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
-  return (await authSdk.signInWithEmailAndPassword(auth, playerEmail(firstName, digits), digits)).user;
+  const localDigits = playerPhoneDigits(phone);
+  try {
+    return (await authSdk.signInWithEmailAndPassword(auth, playerEmail(firstName, localDigits), localDigits)).user;
+  } catch (error) {
+    const legacyDigits = playerStoredPhone(phone);
+    if (legacyDigits.length <= 9) throw error;
+    return (await authSdk.signInWithEmailAndPassword(auth, `${String(firstName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')}.${legacyDigits}@players.futebol-society.com`, legacyDigits)).user;
+  }
 }
 export async function registerPlayer(firstName, phone, fullName = '', nickname = '') {
-  const digits = String(phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
-  const user = (await authSdk.createUserWithEmailAndPassword(auth, playerEmail(firstName, digits), digits)).user;
+  const digits = playerStoredPhone(phone);
+  const localDigits = playerPhoneDigits(digits);
+  const user = (await authSdk.createUserWithEmailAndPassword(auth, playerEmail(firstName, localDigits), localDigits)).user;
   await firestore.setDoc(firestore.doc(db, 'playerAccessRequests', user.uid), { firstName: String(firstName).trim(), fullName: String(fullName || firstName).trim(), nickname: String(nickname || '').trim(), phone: digits, createdAt: new Date().toISOString(), status: 'pending' });
   return user;
 }
