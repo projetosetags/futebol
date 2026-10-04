@@ -8,5 +8,6 @@ export const firebaseConfig = {
   storageBucket: "futebol-society-gramado.firebasestorage.app",
   messagingSenderId: "662065421067",
   appId: "1:662065421067:web:562401b8a02472166fe00e",
-  measurementId: "G-409T38YPR0"
+  measurementId: "G-409T38YPR0",
+  adminUid: "RutTVgdXfjdGrFFnbaYmpOO2nJi1"
 };
