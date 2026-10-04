@@ -29,7 +29,12 @@ service cloud.firestore {
     }
     match /playerData/{uid} {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceChoices'])
+        && request.resource.data.attendanceChoices is map
+        && request.resource.data.attendanceChoices.size() <= 30);
     }
     match /{document=**} {
       allow read, write: if false;
