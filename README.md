@@ -23,7 +23,7 @@ O workflow `.github/workflows/pages.yml` publica o app no GitHub Pages após as 
 
 ## Acesso do jogador
 
-O jogador escolhe **Jogador → Primeiro acesso**, informa primeiro nome e telefone e aguarda aprovação do administrador. Para aprovar, o nome e telefone precisam coincidir com um participante ativo cadastrado. Depois, o jogador entra com o primeiro nome e o mesmo telefone; a área exibe somente os próprios jogos, pagamentos pendentes e a chave PIX. O administrador confirma os pagamentos.
+O jogador escolhe **Jogador → Primeiro acesso**, informa primeiro nome e telefone e aguarda aprovação do administrador. Para aprovar, o nome e telefone precisam coincidir com um participante ativo cadastrado. Depois, o jogador entra com o primeiro nome e o mesmo telefone; a área exibe somente os próprios jogos, pagamentos pendentes e a chave PIX. O jogador também escolhe sexta ou somente sábado em caso de chuva; a escolha aparece na lista administrativa do jogo. O administrador confirma os pagamentos.
 
 O telefone funciona como senha conforme solicitado. Como essa senha é fácil de adivinhar por quem conhece o número, o acesso individual só é liberado após aprovação administrativa; evite reutilizar essa senha em outros serviços.
 
