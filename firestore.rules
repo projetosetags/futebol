@@ -4,7 +4,8 @@ service cloud.firestore {
     // Acesso administrativo exclusivo ao UID do proprietário do sistema.
     match /appData/current {
       allow read, write: if request.auth != null
-        && request.auth.uid == 'RutTVgdXfjdGrFFnbaYmpOO2nJi1';
+        && (request.auth.uid == 'RutTVgdXfjdGrFFnbaYmpOO2nJi1'
+          || request.auth.uid == 'xptgdFErpMV5Ekxa3CRX2SBrdcy1');
     }
     match /{document=**} {
       allow read, write: if false;
