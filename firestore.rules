@@ -34,7 +34,7 @@ service cloud.firestore {
         && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceChoices'])
         && request.resource.data.attendanceChoices is map
-        && request.resource.data.attendanceChoices.size() <= 30);
+        && request.resource.data.attendanceChoices.keys().size() <= 30);
     }
     match /{document=**} {
       allow read, write: if false;
