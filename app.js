@@ -7,6 +7,10 @@ const defaultFields = [
  {id:'field-arena-andrino',name:'Arena Andrino',address:'',maps:'https://www.google.com/maps?q=-28.4926334,-48.9989524&z=17&hl=pt-BR',waze:'https://waze.com/ul?ll=-28.4926334,-48.9989524&navigate=yes',notes:''}
 ];
 const defaultTeams = [
+ {name:'TIME 01',goalkeeper:'Luciano',players:['Esli','Murilo','Luan','Lucas Venancio','Marcelo','Rodrigo','Jheison','Pablo']},
+ {name:'TIME 02',goalkeeper:'Caio',players:['Maicon','Edson','Patrick','Eduardo','Lucas','Rodrigo','Neto','Ramon']}
+];
+const previousTeamSuggestion = [
  {name:'TIME 01',goalkeeper:'Ramon',players:['Maicon','Edson','Ramon M','Markson','Caio','Diego','Nicolas','Pablo']},
  {name:'TIME 02',goalkeeper:'Luciano',players:['Luan','Murilo','Jheisson','Ramon D','Neto','Eduardo','Emanuel','Geison']}
 ];
@@ -67,6 +71,7 @@ function normalizeState(data={}){
    existing.rainFieldId??=template.rainFieldId;
    existing.teams||=structuredClone(defaultTeams);
   }
+  if(existing.scheduleTemplate!==false&&JSON.stringify(existing.teams)===JSON.stringify(previousTeamSuggestion))existing.teams=structuredClone(defaultTeams);
  }
  normalized.payments=Array.isArray(data.payments)?data.payments:[];
  return normalized;
