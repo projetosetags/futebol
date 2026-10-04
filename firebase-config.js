@@ -1,6 +1,6 @@
 // Configuração Web do projeto Futebol Society Gramado.
 // Estes identificadores são destinados ao cliente Web; o acesso aos dados
-// continua protegido pelas regras do Firestore e do Storage.
+// continua protegido pelas regras do Firestore.
 export const firebaseConfig = {
   apiKey: "AIzaSyAkjup_Go6VC_yI6KHOGYrH_sJouLtuiLc",
   authDomain: "futebol-society-gramado.firebaseapp.com",
