@@ -25,3 +25,5 @@ O aplicativo não usa Firebase Storage e não exige upgrade para Blaze. Dados do
 ## Valores e locais iniciais
 
 O painel inicia com chave PIX por telefone `48 9 9191 4372`, jogo a R$ 20,00 e churrasco a R$ 7,00. O administrador pode alterar a chave PIX e os valores padrão em **Configurações**; cada jogo também permite ajustar seus próprios valores. Os locais iniciais são **Campo São João Futebol Clube** e **Arena Andrino**, editáveis na seção **Gramados**.
+
+O calendário inicial inclui as sextas de 09/10 a 27/11/2026 às 19h30 no Campo São João Futebol Clube. Em caso de chuva, cada partida fica programada para o sábado seguinte, às 14h30 na Arena Andrino. Na lista do jogo, o administrador registra a escolha informada por cada jogador: sexta (não vai se houver transferência) ou somente sábado.
