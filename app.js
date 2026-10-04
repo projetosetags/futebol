@@ -28,8 +28,12 @@ let stopNoticeListener = null;
 let stopPollListener = null;
 let stopRequestListener = null;
 let stopPlayerDataListener = null;
+let stopPlayerAccountsListener = null;
 let accessRequests = [];
 let currentPlayerData = null;
+let playerAccounts = [];
+let playerAccountsLoaded = false;
+let playerSyncPromise = Promise.resolve();
 let loginMode = 'admin';
 let pendingPlayerIdentity = null;
 const expiredNoticeDeletes = new Set();
@@ -75,8 +79,7 @@ async function readLocalReceipt(key){const db=await openReceiptDb();const value=
 function openReceipt(ref){const popup=window.open('about:blank','_blank');readLocalReceipt(ref.slice('localreceipt:'.length)).then(file=>{if(!file){popup?.close();toast('Este comprovante está salvo somente no dispositivo onde foi anexado.');return}const url=URL.createObjectURL(file);if(popup)popup.location.href=url;setTimeout(()=>URL.revokeObjectURL(url),60000)}).catch(()=>{popup?.close();toast('Não foi possível abrir o comprovante neste dispositivo.')})}
 function receiptCell(p){if(!p.receipt)return '—';if(p.receipt.startsWith('localreceipt:'))return `<button type="button" class="link" data-action="open-receipt" data-receipt="${esc(p.receipt)}">Abrir arquivo ↗</button>`;return `<a class="link" href="${esc(p.receipt)}" target="_blank" rel="noopener">Ver arquivo ↗</a>`}
 function persist(){localStorage.setItem(KEY,JSON.stringify(state)); saveAppData(state).then(()=>syncPlayerSnapshots()).catch(()=>toast('Não foi possível sincronizar com Firebase. Confira as regras do Firestore.'));}
-async function syncPlayerSnapshots(){if(!currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(currentUser.uid))return;for(const rec of await getApprovedPlayerAccounts()){const player=state.players.find(p=>p.id===rec.playerId);if(player)await savePlayerData(rec.id,buildPlayerSnapshot(player));}}
-async function getApprovedPlayerAccounts(){return new Promise(resolve=>{let stop;stop=listenToRecords('playerData',rows=>{stop?.();resolve(rows)},()=>resolve([]));setTimeout(()=>{stop?.();resolve([])},1500)})}
+function syncPlayerSnapshots(){if(!playerAccountsLoaded||!currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(currentUser.uid))return;playerSyncPromise=playerSyncPromise.then(async()=>{for(const rec of playerAccounts){const player=state.players.find(p=>p.id===rec.playerId);if(player)await savePlayerData(rec.id,{...buildPlayerSnapshot(player),playerId:player.id,approved:true})}}).catch(()=>toast('Não foi possível atualizar os saldos dos jogadores.'));}
 function buildPlayerSnapshot(player){const games=state.games.filter(g=>(g.players||[]).some(p=>p.playerId===player.id||p.name.toLocaleLowerCase('pt-BR')===player.name.toLocaleLowerCase('pt-BR'))).map(g=>{const p=g.players.find(x=>x.playerId===player.id||x.name.toLocaleLowerCase('pt-BR')===player.name.toLocaleLowerCase('pt-BR'));return {date:g.date,time:g.time,field:field(g.fieldId)?.name||'Gramado',fee:Number(g.fee||0),paid:!!p.paid,foodName:g.foodName||'Churrasco',foodFee:Number(g.foodWanted?g.foodFee||0:0),foodPaid:!!p.foodPaid,attendance:p.attendance||'friday',receipt:!!p.receipt}});return {name:player.name,games,pix:state.pix,updatedAt:new Date().toISOString()}}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -151,12 +154,13 @@ document.addEventListener('change',e=>{if(e.target.id==='finance-game'){rosterGa
 if(!cloudEnabled){render()}else{
  renderLogin();
  watchAuthState(async user=>{
-  if(!user){currentUser=null;currentPlayerData=null;for(const stop of [stopDataListener,stopNoticeListener,stopPollListener,stopRequestListener,stopPlayerDataListener])stop?.();stopDataListener=stopNoticeListener=stopPollListener=stopRequestListener=stopPlayerDataListener=null;state=structuredClone(initial);renderLogin(authMessage);authMessage='';return}
+  if(!user){currentUser=null;currentPlayerData=null;playerAccounts=[];playerAccountsLoaded=false;for(const stop of [stopDataListener,stopNoticeListener,stopPollListener,stopRequestListener,stopPlayerDataListener,stopPlayerAccountsListener])stop?.();stopDataListener=stopNoticeListener=stopPollListener=stopRequestListener=stopPlayerDataListener=stopPlayerAccountsListener=null;state=structuredClone(initial);renderLogin(authMessage);authMessage='';return}
   currentUser=user;
   if(!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(user.uid)){currentUser.role='player';renderPlayerPage();if(stopPlayerDataListener)stopPlayerDataListener();stopPlayerDataListener=listenToPlayerData(user.uid,data=>{currentPlayerData=data;renderPlayerPage()},()=>{currentPlayerData=null;renderPlayerPage()});return}
   authMessage='';currentUser.role='admin';state=load();render();
   if(stopDataListener)stopDataListener();stopDataListener=listenToAppData(data=>{if(data&&Array.isArray(data.games)&&Array.isArray(data.players)){state=normalizeState(data);localStorage.setItem(KEY,JSON.stringify(state));render();syncPlayerSnapshots()}},()=>toast('Falha ao receber dados do Firebase. Confira o banco e as regras.'));
-  stopNoticeListener?.();stopPollListener?.();stopRequestListener?.();
+  stopNoticeListener?.();stopPollListener?.();stopRequestListener?.();stopPlayerAccountsListener?.();playerAccountsLoaded=false;
+  stopPlayerAccountsListener=listenToRecords('playerData',rows=>{playerAccounts=rows;const first=!playerAccountsLoaded;playerAccountsLoaded=true;if(first)syncPlayerSnapshots()},()=>toast('Falha ao carregar contas de jogadores.'));
   stopNoticeListener=listenToRecords('notices',rows=>{notices=rows;persistRecords('notices',rows);removeExpiredNotices();if(page==='notices')render()},()=>toast('Falha ao sincronizar avisos.'));
   stopPollListener=listenToRecords('polls',rows=>{polls=rows;persistRecords('polls',rows);if(page==='polls')render()},()=>toast('Falha ao sincronizar enquetes.'));
   stopRequestListener=listenToRecords('playerAccessRequests',rows=>{accessRequests=rows;if(page==='players')render()},()=>toast('Falha ao carregar pedidos de acesso.'));
