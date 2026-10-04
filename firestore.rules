@@ -22,9 +22,16 @@ service cloud.firestore {
     match /playerAccessRequests/{uid} {
       allow create: if request.auth != null
         && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['firstName', 'phone', 'createdAt', 'status'])
+        && request.resource.data.keys().hasOnly(['firstName', 'fullName', 'nickname', 'phone', 'createdAt', 'status'])
         && request.resource.data.firstName is string
+        && request.resource.data.fullName is string
+        && request.resource.data.nickname is string
         && request.resource.data.phone is string
+        && request.resource.data.firstName.size() <= 30
+        && request.resource.data.fullName.size() <= 100
+        && request.resource.data.nickname.size() <= 40
+        && request.resource.data.phone.matches('^[0-9]{10,11}$')
+        && request.resource.data.createdAt is string
         && request.resource.data.status == 'pending';
       allow read, update, delete: if isAdmin();
     }
