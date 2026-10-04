@@ -13,7 +13,8 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     match /notices/{noticeId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || request.auth != null;
+      allow write: if isAdmin();
     }
     match /polls/{pollId} {
       allow read, write: if isAdmin();
