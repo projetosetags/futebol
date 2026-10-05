@@ -45,8 +45,17 @@ export async function signInPlayer(firstName, phone) {
 export async function registerPlayer(firstName, phone, fullName = '', nickname = '') {
   const digits = playerStoredPhone(phone);
   const localDigits = playerPhoneDigits(digits);
-  const user = (await authSdk.createUserWithEmailAndPassword(auth, playerEmail(firstName, localDigits), localDigits)).user;
-  await firestore.setDoc(firestore.doc(db, 'playerAccessRequests', user.uid), { firstName: String(firstName).trim(), fullName: String(fullName || firstName).trim(), nickname: String(nickname || '').trim(), phone: digits, createdAt: new Date().toISOString(), status: 'pending' });
+  let user;
+  try {
+    user = (await authSdk.createUserWithEmailAndPassword(auth, playerEmail(firstName, localDigits), localDigits)).user;
+  } catch (error) {
+    if (error.code !== 'auth/email-already-in-use') throw error;
+    user = (await authSdk.signInWithEmailAndPassword(auth, playerEmail(firstName, localDigits), localDigits)).user;
+  }
+  const requestRef = firestore.doc(db, 'playerAccessRequests', user.uid);
+  const previousRequest = await firestore.getDoc(requestRef);
+  if (previousRequest.exists()) return user;
+  await firestore.setDoc(requestRef, { firstName: String(firstName).trim(), fullName: String(fullName || firstName).trim(), nickname: String(nickname || '').trim(), phone: digits, createdAt: new Date().toISOString(), status: 'pending' });
   return user;
 }
 export function listenToPlayerData(uid, onData, onError) {
