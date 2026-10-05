@@ -3,8 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101b18">
-  <title>Área do jogador · Society Gramado</title>
+  <meta name="theme-color" content="#0c231c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Futebol">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/futebol-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/futebol-180.png">
+  <title>Futebol</title>
   <link rel="stylesheet" href="./styles.css?v=20261005-mobile-fit">
 </head>
 <body>
@@ -12,5 +17,10 @@
   <div id="modal-root"></div>
   <div id="toast-root" aria-live="polite"></div>
   <script type="module" src="./app.js?v=20261005-approve"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+    }
+  </script>
 </body>
 </html>
