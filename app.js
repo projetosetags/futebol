@@ -1,4 +1,4 @@
-import { cloudEnabled, listenToAppData, saveAppData, listenToRecords, saveRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, listenToPlayerData, savePlayerData, savePlayerAttendance, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js';
+import { cloudEnabled, listenToAppData, saveAppData, listenToRecords, saveRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, listenToPlayerData, savePlayerData, savePlayerAttendance, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261004-2226';
 import { firebaseConfig } from './firebase-config.js';
 
 const KEY = 'society-gramado-v1';
