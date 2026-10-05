@@ -36,6 +36,13 @@ service cloud.firestore {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       allow update, delete: if isAdmin();
     }
+    // Índice por hash de nome + telefone local para aceitar login com nome, nome completo ou apelido.
+    // O documento contém apenas o e-mail sintético do Firebase, sem expor o telefone.
+    match /playerLoginAliases/{aliasId} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
     match /playerData/{uid} {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid && resource.data.approved == true);
       allow create, delete: if isAdmin();
