@@ -61,7 +61,9 @@ export async function signInPlayer(identifier, phone) {
     let lastError;
     for (const email of [...new Set(attempts)]) {
       try {
-        return (await authSdk.signInWithEmailAndPassword(auth, email, localDigits)).user;
+        const user = (await authSdk.signInWithEmailAndPassword(auth, email, localDigits)).user;
+        await activatePlayer(user, firstName, phone, alias);
+        return user;
       } catch (error) {
         lastError = error;
         if (!['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(error.code)) throw error;
@@ -92,7 +94,11 @@ export async function registerPlayer(firstName, phone, fullName = '', nickname =
   if (user) {
     const requestRef = firestore.doc(db, 'playerAccessRequests', user.uid);
     const previousRequest = await firestore.getDoc(requestRef);
-    if (previousRequest.exists()) return user;
+    if (previousRequest.exists()) {
+      if (previousRequest.data().status !== 'approved') await firestore.updateDoc(requestRef, { status: 'approved' });
+      await ensurePlayerProfile(user, firstName, digits, fullName, nickname);
+      return user;
+    }
   }
   try {
     if (!user) user = (await authSdk.createUserWithEmailAndPassword(auth, playerEmail(firstName, localDigits), localDigits)).user;
@@ -102,9 +108,35 @@ export async function registerPlayer(firstName, phone, fullName = '', nickname =
   }
   const requestRef = firestore.doc(db, 'playerAccessRequests', user.uid);
   const previousRequest = await firestore.getDoc(requestRef);
-  if (previousRequest.exists()) return user;
-  await firestore.setDoc(requestRef, { firstName: String(firstName).trim(), fullName: String(fullName || firstName).trim(), nickname: String(nickname || '').trim(), phone: digits, createdAt: new Date().toISOString(), status: 'pending' });
+  if (previousRequest.exists()) {
+    if (previousRequest.data().status !== 'approved') await firestore.updateDoc(requestRef, { status: 'approved' });
+  } else {
+    await firestore.setDoc(requestRef, { firstName: String(firstName).trim(), fullName: String(fullName || firstName).trim(), nickname: String(nickname || '').trim(), phone: digits, createdAt: new Date().toISOString(), status: 'approved' });
+  }
+  await ensurePlayerProfile(user, firstName, digits, fullName, nickname);
   return user;
+}
+async function ensurePlayerProfile(user, firstName, phone, fullName, nickname) {
+  const profileRef = firestore.doc(db, 'playerData', user.uid);
+  const profile = await firestore.getDoc(profileRef);
+  if (!profile.exists()) await firestore.setDoc(profileRef, {
+    name: String(fullName || firstName).trim(),
+    nickname: String(nickname || '').trim(),
+    phone: String(phone),
+    approved: true,
+    createdAt: new Date().toISOString()
+  });
+}
+async function activatePlayer(user, firstName, phone, identifier) {
+  const digits = playerStoredPhone(phone);
+  const requestRef = firestore.doc(db, 'playerAccessRequests', user.uid);
+  const request = await firestore.getDoc(requestRef);
+  if (!request.exists()) {
+    await firestore.setDoc(requestRef, { firstName: String(firstName).trim(), fullName: String(identifier || firstName).trim(), nickname: '', phone: digits, createdAt: new Date().toISOString(), status: 'approved' });
+  } else if (request.data().status !== 'approved') {
+    await firestore.updateDoc(requestRef, { status: 'approved' });
+  }
+  await ensurePlayerProfile(user, firstName, digits, identifier, '');
 }
 export function listenToPlayerData(uid, onData, onError) {
   if (!cloudEnabled) return () => {};
