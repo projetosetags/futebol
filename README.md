@@ -23,11 +23,12 @@ O workflow `.github/workflows/pages.yml` publica o app no GitHub Pages após as 
 
 ## Acesso do jogador
 
-O jogador escolhe **Jogador → Primeiro acesso**, informa primeiro nome e telefone e aguarda aprovação do administrador. Para aprovar, o nome e telefone precisam coincidir com um participante ativo cadastrado. Depois, o jogador entra com o primeiro nome e o mesmo telefone; a área exibe somente os próprios jogos, pagamentos pendentes e a chave PIX. O jogador também escolhe sexta ou somente sábado em caso de chuva; a escolha aparece na lista administrativa do jogo. O administrador confirma os pagamentos. Avisos ativos também aparecem na área do jogador.
+O jogador entra com primeiro nome e os 9 dígitos finais do telefone, sem `+55`. Em primeiro acesso, ele envia nome completo e apelido; na lista de participantes o administrador pode aprovar diretamente, editar o nome/apelido do pedido, escolher o participante correspondente ou excluir o pedido. Se nenhuma pessoa for selecionada, a aprovação cria um cadastro novo. O jogador vê apenas os próprios dados e o jogo da semana; o valor devido soma todos os pagamentos pendentes. A presença pode ser escolhida no jogo disponível.
 
-Os 26 nomes identificados nas listas e escalações foram pré-cadastrados sem inventar sobrenomes nem telefones. Administradores podem completar nome, apelido e telefone no cadastro; no pedido de primeiro acesso, o jogador também pode enviar nome completo e apelido para o administrador revisar e aprovar. Homônimos, como Rodrigo e Ramon, precisam de telefones cadastrados para associação correta.
+Os contatos que tinham nome e telefone legíveis nas imagens foram pré-cadastrados. O número sem nome foi deixado como “Contato sem nome” para o administrador completar. Homônimos podem ser vinculados pelo telefone na aprovação. Na primeira sincronização desta versão, o nome atual é copiado para o campo de apelido, preservando apelidos anteriores como aliases internos para associar listas antigas.
 
-O telefone funciona como senha conforme solicitado. Como essa senha é fácil de adivinhar por quem conhece o número, o acesso individual só é liberado após aprovação administrativa; evite reutilizar essa senha em outros serviços.
+O administrador mantém acesso completo pelos quatro UIDs registrados em `firebase-config.js` e nas regras do Firestore. No elenco, pode editar ou excluir participantes; a exclusão bloqueia a leitura dos dados pessoais do jogador e preserva os jogos passados.
+
 
 ## Gestão
 
