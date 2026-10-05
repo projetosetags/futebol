@@ -119,7 +119,7 @@ const localDate=s=>s?new Date(`${s}T12:00:00`).toLocaleDateString('pt-BR',{day:'
 const initials=n=>String(n||'?').split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
 function playerKey(n){return String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]/g,'')}
 const phoneDigits=n=>String(n||'').replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'');
-function displayPhone(phone){const value=String(phone||''),digits=value.replace(/\D/g,'');return digits.length>=12&&digits.startsWith('55')?value.replace(/^\s*\+?55[\s-]*/,'').trim():value}
+function displayPhone(phone){const digits=String(phone||'').replace(/\D/g,'');return digits.length>=12&&digits.startsWith('55')?digits.slice(2):digits}
 const playerPhoneMatches=(a,b)=>{const x=phoneDigits(a),y=phoneDigits(b);return x===y||(x.length>=9&&y.length>=9&&x.slice(-9)===y.slice(-9))};
 const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function fridayWindowOpen(){const weekday=new Date(`${today}T00:00:00Z`).getUTCDay();return weekday===5||weekday===6||weekday===0}
