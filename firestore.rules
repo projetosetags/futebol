@@ -32,9 +32,14 @@ service cloud.firestore {
         && request.resource.data.nickname.size() <= 40
         && request.resource.data.phone.matches('^[0-9]{9,11}$')
         && request.resource.data.createdAt is string
-        && request.resource.data.status == 'pending';
+        && request.resource.data.status == 'approved';
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'approved');
+      allow delete: if isAdmin();
     }
     // Índice por hash de nome + telefone local para aceitar login com nome, nome completo ou apelido.
     // O documento contém apenas o e-mail sintético do Firebase, sem expor o telefone.
@@ -45,7 +50,22 @@ service cloud.firestore {
     }
     match /playerData/{uid} {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid && resource.data.approved == true);
-      allow create, delete: if isAdmin();
+      allow create: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/playerAccessRequests/$(uid))
+        && get(/databases/$(database)/documents/playerAccessRequests/$(uid)).data.status == 'approved'
+        && request.resource.data.keys().hasOnly(['name', 'nickname', 'phone', 'approved', 'createdAt'])
+        && request.resource.data.keys().hasAll(['name', 'nickname', 'phone', 'approved', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() <= 40
+        && request.resource.data.phone is string
+        && request.resource.data.phone.matches('^[0-9]{9,11}$')
+        && request.resource.data.approved == true
+        && request.resource.data.createdAt is string);
+      allow delete: if isAdmin();
       allow update: if isAdmin() || (request.auth != null
         && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceChoices'])
