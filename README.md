@@ -35,6 +35,7 @@ O administrador mantém acesso completo pelos quatro UIDs registrados em `fireba
 - A agenda inicial contém jogos às sextas, 19h30, de 9 de outubro até 27 de novembro de 2026, com alternativa para sábado às 14h30 em caso de chuva.
 - O valor inicial é R$ 20 por jogo e R$ 7 de churrasco; chave PIX `48 9 9191 4372`.
 - Gramados, horários, valores e jogadores podem ser editados no painel. A escalação usa uma lista pesquisável com caixas de seleção, em vez de nomes digitados linha a linha. Alterações no nome do participante são sincronizadas com jogos, times e painel individual.
+- A visão geral exibe somente o jogo da semana, escalações e PIX. O administrador confirma jogo e churrasco com botões ao receber cada PIX; pagamentos confirmados aparecem primeiro, pela ordem do registro. Avisos e enquetes ativos aparecem nessa tela. A lista e os times podem ser copiados como sugestão para a semana seguinte; os times aceitam até 7 jogadores de linha mais o goleiro e continuam editáveis.
 - Avisos vencidos deixam de aparecer e são apagados do Firestore quando um administrador abre o painel depois do prazo. Não há exclusão programada em segundo plano no plano Spark.
 - Enquetes e registro de votos são administrados pelo painel.
 
