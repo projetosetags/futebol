@@ -23,9 +23,9 @@ O workflow `.github/workflows/pages.yml` publica o app no GitHub Pages após as 
 
 ## Acesso do jogador
 
-O jogador entra usando um único campo: primeiro nome, nome completo ou apelido, mais os 9 dígitos finais do telefone como senha, sem `+55`. Em primeiro acesso, o nome digitado é enviado ao administrador, que pode aprovar, editar, vincular ao participante correspondente ou excluir o pedido. Se nenhuma pessoa for selecionada, a aprovação cria um cadastro novo. O jogador vê apenas os próprios dados e o jogo da semana; o valor devido soma todos os pagamentos pendentes. A presença pode ser escolhida no jogo disponível.
+O jogador entra usando um único campo: primeiro nome, nome completo ou apelido, mais os 9 dígitos finais do telefone como senha, sem `+55`. O primeiro acesso libera a conta imediatamente. A lista antiga de pedidos pendentes é aprovada e vinculada automaticamente pelo administrador quando ele abrir o painel. O jogador vê apenas os próprios dados e o jogo da semana; o valor devido soma todos os pagamentos pendentes. A presença pode ser escolhida no jogo disponível.
 
-Os contatos que tinham nome e telefone legíveis nas imagens foram pré-cadastrados. O número sem nome foi deixado como “Contato sem nome” para o administrador completar. Homônimos podem ser vinculados pelo telefone na aprovação. Na primeira sincronização desta versão, o nome atual é copiado para o campo de apelido, preservando apelidos anteriores como aliases internos para associar listas antigas.
+Os contatos que tinham nome e telefone legíveis nas imagens foram pré-cadastrados. O número sem nome foi deixado como “Contato sem nome” para o administrador completar. A vinculação automática procura primeiro o telefone e depois um nome exato único; se não encontrar correspondência única, cria um novo participante. Na primeira sincronização desta versão, o nome atual é copiado para o campo de apelido, preservando apelidos anteriores como aliases internos para associar listas antigas.
 
 O administrador mantém acesso completo pelos quatro UIDs registrados em `firebase-config.js` e nas regras do Firestore. No elenco, pode editar ou excluir participantes; a exclusão bloqueia a leitura dos dados pessoais do jogador e preserva os jogos passados.
 
@@ -40,7 +40,7 @@ O administrador mantém acesso completo pelos quatro UIDs registrados em `fireba
 
 ## Dados importantes
 
-`appData/current` contém o cadastro completo e é acessível somente aos administradores. `playerData/{uid}` contém a visão financeira individual, com leitura restrita ao próprio usuário e aos administradores. `playerAccessRequests/{uid}` guarda os pedidos de aprovação. `playerLoginAliases/{hash}` relaciona cada nome/apelido e telefone a um e-mail sintético do Firebase; os documentos usam hash e não armazenam o telefone. A regra permite apenas leitura pontual para resolver o login e escrita administrativa.
+`appData/current` contém o cadastro completo e é acessível somente aos administradores. `playerData/{uid}` contém a visão financeira individual, com leitura restrita ao próprio usuário e aos administradores; o jogador pode criar apenas seu perfil básico já aprovado no primeiro acesso. `playerAccessRequests/{uid}` mantém os dados mínimos de identidade para associar contas antigas. `playerLoginAliases/{hash}` relaciona cada nome/apelido e telefone a um e-mail sintético do Firebase; os documentos usam hash e não armazenam o telefone. A regra permite apenas leitura pontual para resolver o login e escrita administrativa.
 
 
 ## Links de acesso
