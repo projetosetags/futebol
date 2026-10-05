@@ -32,10 +32,42 @@ function playerEmail(firstName, phone) {
   const name = String(firstName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
   return `${name}.${playerPhoneDigits(phone)}@players.futebol-society.com`;
 }
-export async function signInPlayer(firstName, phone) {
+export function playerEmailFor(firstName, phone) {
+  return playerEmail(firstName, phone);
+}
+function playerAliasKey(name) {
+  return String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]/g, '');
+}
+export async function playerAliasId(name, phone) {
+  const value = `${playerAliasKey(name)}:${playerPhoneDigits(phone)}`;
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+export async function signInPlayer(identifier, phone) {
   const localDigits = playerPhoneDigits(phone);
+  const alias = String(identifier || '').trim();
+  const firstName = alias.split(/\s+/)[0] || alias;
+  const attempts = [];
   try {
-    return (await authSdk.signInWithEmailAndPassword(auth, playerEmail(firstName, localDigits), localDigits)).user;
+    const aliasRef = firestore.doc(db, 'playerLoginAliases', await playerAliasId(alias, localDigits));
+    const aliasDoc = await firestore.getDoc(aliasRef);
+    if (aliasDoc.exists() && aliasDoc.data().email) attempts.push(aliasDoc.data().email);
+  } catch {
+    // Older Firestore rules may not include the alias index yet; the original first-name login remains available.
+  }
+  attempts.push(playerEmail(firstName, localDigits));
+  if (playerAliasKey(alias) !== playerAliasKey(firstName)) attempts.push(playerEmail(alias, localDigits));
+  try {
+    let lastError;
+    for (const email of [...new Set(attempts)]) {
+      try {
+        return (await authSdk.signInWithEmailAndPassword(auth, email, localDigits)).user;
+      } catch (error) {
+        lastError = error;
+        if (!['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(error.code)) throw error;
+      }
+    }
+    throw lastError;
   } catch (error) {
     const legacyDigits = playerStoredPhone(phone);
     if (legacyDigits.length <= 9) throw error;
@@ -46,8 +78,24 @@ export async function registerPlayer(firstName, phone, fullName = '', nickname =
   const digits = playerStoredPhone(phone);
   const localDigits = playerPhoneDigits(digits);
   let user;
+  for (const name of [firstName, fullName, nickname].filter(Boolean)) {
+    try {
+      const aliasDoc = await firestore.getDoc(firestore.doc(db, 'playerLoginAliases', await playerAliasId(name, localDigits)));
+      if (aliasDoc.exists() && aliasDoc.data().email) {
+        user = (await authSdk.signInWithEmailAndPassword(auth, aliasDoc.data().email, localDigits)).user;
+        break;
+      }
+    } catch {
+      // If the alias index is not published, continue with the normal first-access flow.
+    }
+  }
+  if (user) {
+    const requestRef = firestore.doc(db, 'playerAccessRequests', user.uid);
+    const previousRequest = await firestore.getDoc(requestRef);
+    if (previousRequest.exists()) return user;
+  }
   try {
-    user = (await authSdk.createUserWithEmailAndPassword(auth, playerEmail(firstName, localDigits), localDigits)).user;
+    if (!user) user = (await authSdk.createUserWithEmailAndPassword(auth, playerEmail(firstName, localDigits), localDigits)).user;
   } catch (error) {
     if (error.code !== 'auth/email-already-in-use') throw error;
     user = (await authSdk.signInWithEmailAndPassword(auth, playerEmail(firstName, localDigits), localDigits)).user;
