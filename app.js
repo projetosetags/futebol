@@ -1,4 +1,4 @@
-import { cloudEnabled, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, listenToPlayerData, savePlayerData, savePlayerAttendance, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261006-admin-login';
+import { cloudEnabled, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, listenToPlayerData, savePlayerData, savePlayerAttendance, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261006-admin-login-fix1';
 import { firebaseConfig } from './firebase-config.js';
 
 const KEY = 'society-gramado-v1';
