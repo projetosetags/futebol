@@ -39,6 +39,8 @@ const scheduleTemplates = [
  ['2026-10-09','2026-10-10'],['2026-10-16','2026-10-17'],['2026-10-23','2026-10-24'],['2026-10-30','2026-10-31'],
  ['2026-11-06','2026-11-07'],['2026-11-13','2026-11-14'],['2026-11-20','2026-11-21'],['2026-11-27','2026-11-28']
 ].map(([date,rainDate])=>({id:`weekly-${date}`,date,time:'19:30',fieldId:'field-sao-joao',fee:20,foodFee:7,foodName:'Churrasco',durationMinutes:60,matchIntervalMinutes:8,players:[],teams:structuredClone(defaultTeams),maps:'',status:'open',rainDate,rainTime:'14:30',rainFieldId:'field-arena-andrino',scheduleTemplate:true}));
+const octoberNineRoster=['Maicon','Esli','Ramon','Patrick','Manoel Fernandes Neto','Eduardo','Jheison','Diego','Marcelo','Pablo Henrique','Luan'];
+const octoberNineTeamNames=[['Esli','Diego','Jheison','Marcelo','Pablo Henrique','Luan'],['Maicon','Ramon','Patrick','Manoel Fernandes Neto','Eduardo']];
 const initial = { fields:structuredClone(defaultFields), players:structuredClone(defaultPlayers), games:structuredClone(scheduleTemplates), payments:[], pix:'48991914372', gameFee:20, foodFee:7 };
 let state = cloudEnabled ? structuredClone(initial) : load();
 let currentUser = null;
@@ -132,6 +134,18 @@ function normalizeState(data={}){
   const fieldPlayers=game.players.filter(player=>player.position!=='Goleiro').length;
   if(fieldPlayers>=18&&game.teams.length<3)game.teams.push(structuredClone(thirdTeamTemplate));
   if(game.teams.length>3)game.teams=game.teams.slice(0,3);
+ }
+ if(Number(data.octoberNineRosterVersion||0)<1){
+  const game=normalized.games.find(g=>g.date==='2026-10-09');
+  if(game){
+   const findPlayer=name=>normalized.players.find(p=>[p.name,p.nickname,...(p.aliases||[])].filter(Boolean).some(alias=>playerKey(alias)===playerKey(name)));
+   const previous=game.players||[];
+   game.players=octoberNineRoster.map(name=>{const player=findPlayer(name),old=previous.find(entry=>entry.playerId===player?.id||playerKey(entry.name)===playerKey(name));return {...old,playerId:player?.id||old?.playerId||'',name:player?.name||name,position:'Jogador',paid:!!old?.paid,foodWanted:true,foodPaid:!!old?.foodPaid,attendance:old?.attendance||'friday'}});
+   game.fee=20;game.foodFee=7;game.foodName='Churrasco';game.status=game.status||'open';
+   game.teams=octoberNineTeamNames.map((names,index)=>{const players=names.map(findPlayer).filter(Boolean);return {name:`TIME 0${index+1}`,goalkeeper:'',playerIds:players.map(player=>player.id),players:players.map(player=>player.name)}});
+   game.teamsEdited=true;
+  }
+  normalized.octoberNineRosterVersion=1;
  }
  normalized.gameTeamFormatVersion=3;
  normalized.payments=Array.isArray(data.payments)?data.payments:[];
@@ -291,7 +305,7 @@ if(!cloudEnabled){render()}else{
   currentUser=user;
   if(!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(user.uid)){currentUser.role='player';watchAwardData();watchPollData(user.uid);renderPlayerPage();if(stopPlayerDataListener)stopPlayerDataListener();stopNoticeListener?.();stopNoticeListener=listenToRecords('notices',rows=>{notices=rows;renderPlayerPage()},()=>toast('Falha ao carregar avisos.'));stopPlayerDataListener=listenToPlayerData(user.uid,data=>{currentPlayerData=data;renderPlayerPage()},()=>{currentPlayerData=null;renderPlayerPage()});return}
   authMessage='';currentUser.role='admin';if(playerPortalOnly){renderLogin();return}watchAwardData();watchPollData();appDataLoaded=false;state=load();render();
-  if(stopDataListener)stopDataListener();stopDataListener=listenToAppData(data=>{if(data&&Array.isArray(data.games)&&Array.isArray(data.players)){const savedPlayerCount=data.players.length,needsNicknameMigration=data.nicknameMigrationVersion!==1,needsIdentityMigration=data.playerIdentityMigrationVersion!==1,needsTeamMigration=data.gameTeamFormatVersion!==3;state=normalizeState(data);appDataLoaded=true;localStorage.setItem(KEY,JSON.stringify(state));render();if(state.players.length>savedPlayerCount||needsNicknameMigration||needsIdentityMigration||needsTeamMigration)saveAppData(state).then(()=>syncPlayerLoginAliases()).catch(()=>toast('Não foi possível atualizar os participantes iniciais.'));syncPlayerSnapshots();syncGameAwardBallots();processPlayerAccounts()}},()=>toast('Falha ao receber dados do Firebase. Confira o banco e as regras.'));
+  if(stopDataListener)stopDataListener();stopDataListener=listenToAppData(data=>{if(data&&Array.isArray(data.games)&&Array.isArray(data.players)){const savedPlayerCount=data.players.length,needsNicknameMigration=data.nicknameMigrationVersion!==1,needsIdentityMigration=data.playerIdentityMigrationVersion!==1,needsTeamMigration=data.gameTeamFormatVersion!==3,needsWeeklyRosterMigration=data.octoberNineRosterVersion!==1;state=normalizeState(data);appDataLoaded=true;localStorage.setItem(KEY,JSON.stringify(state));render();if(state.players.length>savedPlayerCount||needsNicknameMigration||needsIdentityMigration||needsTeamMigration||needsWeeklyRosterMigration)saveAppData(state).then(()=>syncPlayerLoginAliases()).catch(()=>toast('Não foi possível atualizar os participantes iniciais.'));syncPlayerSnapshots();syncGameAwardBallots();processPlayerAccounts()}},()=>toast('Falha ao receber dados do Firebase. Confira o banco e as regras.'));
   stopNoticeListener?.();stopPollListener?.();stopRequestListener?.();stopPlayerAccountsListener?.();stopAliasListener?.();playerAccountsLoaded=false;accessRequestsLoaded=false;loginAliasesLoaded=false;
   stopPlayerAccountsListener=listenToRecords('playerData',rows=>{playerAccounts=rows;applyPlayerChoices(rows);const first=!playerAccountsLoaded;playerAccountsLoaded=true;if(first)syncPlayerSnapshots();syncPlayerLoginAliases();syncGameAwardBallots();processPlayerAccounts()},()=>toast('Falha ao carregar contas de jogadores.'));
   stopAliasListener=listenToRecords('playerLoginAliases',rows=>{loginAliases=rows;loginAliasesLoaded=true;syncPlayerLoginAliases()},()=>toast('Falha ao carregar os nomes de acesso.'));
