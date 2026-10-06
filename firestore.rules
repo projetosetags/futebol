@@ -19,6 +19,36 @@ service cloud.firestore {
     match /polls/{pollId} {
       allow read, write: if isAdmin();
     }
+    // Galeria enxuta do jogo: as imagens são comprimidas e cada foto fica em seu documento.
+    match /gameGallery/{photoId} {
+      allow read: if isAdmin() || request.auth != null;
+      allow write: if isAdmin();
+    }
+    // A lista de candidatos e a janela ficam disponíveis somente a usuários autenticados.
+    match /gameAwardBallots/{gameId} {
+      allow read: if isAdmin() || request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /gameAwardVotes/{voteId} {
+      function ballot() {
+        return get(/databases/$(database)/documents/gameAwardBallots/$(request.resource.data.gameId)).data;
+      }
+      allow get, list: if isAdmin() || request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['gameId', 'teamId', 'candidatePlayerId', 'voterId', 'createdAt'])
+        && request.resource.data.gameId is string
+        && request.resource.data.teamId in ['team-1', 'team-2', 'team-3']
+        && request.resource.data.candidatePlayerId is string
+        && request.resource.data.voterId == request.auth.uid
+        && voteId == request.resource.data.gameId + '-' + request.resource.data.teamId + '-' + request.auth.uid
+        && request.resource.data.createdAt is string
+        && ballot().eligibleVoterIds.hasAny([request.auth.uid])
+        && ballot().teams[request.resource.data.teamId].candidateIds.hasAny([request.resource.data.candidatePlayerId])
+        && request.time >= ballot().opensAt
+        && request.time <= ballot().closesAt
+        && !exists(/databases/$(database)/documents/gameAwardVotes/$(voteId));
+      allow update, delete: if isAdmin();
+    }
     match /playerAccessRequests/{uid} {
       allow create: if request.auth != null
         && request.auth.uid == uid
