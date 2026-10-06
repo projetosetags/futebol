@@ -169,6 +169,34 @@ export function listenToRecords(collectionName, onData, onError) {
     onData(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
   }, onError);
 }
+export function listenToMyPollVotes(uid, onData, onError) {
+  if (!cloudEnabled) return () => {};
+  const votes = firestore.query(
+    firestore.collection(db, 'pollVotes'),
+    firestore.where('voterId', '==', uid)
+  );
+  return firestore.onSnapshot(votes, snapshot => {
+    onData(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
+  }, onError);
+}
+export async function submitPollVote(pollId, optionIndex, uid) {
+  if (!cloudEnabled) throw new Error('O Firebase não está configurado.');
+  const voteId = `${pollId}-${uid}`;
+  const tallyId = `${pollId}-${optionIndex}`;
+  const voteRef = firestore.doc(db, 'pollVotes', voteId);
+  const tallyRef = firestore.doc(db, 'pollTallies', tallyId);
+  await firestore.runTransaction(db, async transaction => {
+    const [voteSnapshot, tallySnapshot] = await Promise.all([
+      transaction.get(voteRef), transaction.get(tallyRef)
+    ]);
+    if (voteSnapshot.exists()) throw new Error('Você já respondeu esta enquete.');
+    const count = tallySnapshot.exists() ? Number(tallySnapshot.data().count || 0) : 0;
+    transaction.set(voteRef, {
+      pollId, optionIndex, voterId: uid, createdAt: new Date().toISOString()
+    });
+    transaction.set(tallyRef, { pollId, optionIndex, count: count + 1 });
+  });
+}
 export async function saveRecord(collectionName, record) {
   if (!cloudEnabled) return;
   const { id, ...data } = record;
