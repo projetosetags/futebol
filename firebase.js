@@ -182,7 +182,8 @@ export function listenToMyPollVotes(uid, onData, onError) {
 export async function submitPollVote(pollId, optionIndex, uid) {
   if (!cloudEnabled) throw new Error('O Firebase não está configurado.');
   const voteId = `${pollId}-${uid}`;
-  const tallyId = `${pollId}-${optionIndex}`;
+  const optionKey = String(optionIndex);
+  const tallyId = `${pollId}-${optionKey}`;
   const voteRef = firestore.doc(db, 'pollVotes', voteId);
   const tallyRef = firestore.doc(db, 'pollTallies', tallyId);
   await firestore.runTransaction(db, async transaction => {
@@ -192,9 +193,9 @@ export async function submitPollVote(pollId, optionIndex, uid) {
     if (voteSnapshot.exists()) throw new Error('Você já respondeu esta enquete.');
     const count = tallySnapshot.exists() ? Number(tallySnapshot.data().count || 0) : 0;
     transaction.set(voteRef, {
-      pollId, optionIndex, voterId: uid, createdAt: new Date().toISOString()
+      pollId, optionIndex: optionKey, voterId: uid, createdAt: new Date().toISOString()
     });
-    transaction.set(tallyRef, { pollId, optionIndex, count: count + 1 });
+    transaction.set(tallyRef, { pollId, optionIndex: optionKey, count: count + 1 });
   });
 }
 export async function saveRecord(collectionName, record) {
