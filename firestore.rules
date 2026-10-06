@@ -17,7 +17,79 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /polls/{pollId} {
-      allow read, write: if isAdmin();
+      // Todos os usuários autenticados podem consultar as enquetes; só os administradores as alteram.
+      allow read: if isAdmin() || request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /pollVotes/{voteId} {
+      function pollPath(pollId) {
+        return /databases/$(database)/documents/polls/$(pollId);
+      }
+      function tallyPath(pollId, optionIndex) {
+        return /databases/$(database)/documents/pollTallies/$(pollId)-$(optionIndex);
+      }
+      function voteIsOpen(pollId) {
+        let poll = get(pollPath(pollId)).data;
+        return !('expiresAt' in poll)
+          || poll.expiresAt == ''
+          || (('expiresAtMs' in poll) && request.time.seconds * 1000 <= poll.expiresAtMs);
+      }
+      allow get: if isAdmin() || (request.auth != null && resource.data.voterId == request.auth.uid);
+      allow list: if isAdmin() || (request.auth != null && resource.data.voterId == request.auth.uid);
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'voterId', 'createdAt'])
+        && request.resource.data.pollId is string
+        && request.resource.data.optionIndex is int
+        && request.resource.data.optionIndex >= 0
+        && request.resource.data.voterId == request.auth.uid
+        && request.resource.data.createdAt is string
+        && voteId == request.resource.data.pollId + '-' + request.auth.uid
+        && exists(pollPath(request.resource.data.pollId))
+        && request.resource.data.optionIndex < get(pollPath(request.resource.data.pollId)).data.options.size()
+        && voteIsOpen(request.resource.data.pollId)
+        && !exists(/databases/$(database)/documents/pollVotes/$(voteId))
+        && existsAfter(tallyPath(request.resource.data.pollId, request.resource.data.optionIndex))
+        && getAfter(tallyPath(request.resource.data.pollId, request.resource.data.optionIndex)).data.pollId == request.resource.data.pollId
+        && getAfter(tallyPath(request.resource.data.pollId, request.resource.data.optionIndex)).data.optionIndex == request.resource.data.optionIndex;
+      allow update, delete: if isAdmin();
+    }
+    match /pollTallies/{tallyId} {
+      function pollPath(pollId) {
+        return /databases/$(database)/documents/polls/$(pollId);
+      }
+      function pairedNewVote(pollId, optionIndex) {
+        let votePath = /databases/$(database)/documents/pollVotes/$(pollId)-$(request.auth.uid);
+        return !exists(votePath)
+          && existsAfter(votePath)
+          && getAfter(votePath).data.pollId == pollId
+          && getAfter(votePath).data.optionIndex == optionIndex
+          && getAfter(votePath).data.voterId == request.auth.uid;
+      }
+      function validPollOption(pollId, optionIndex) {
+        return exists(pollPath(pollId))
+          && optionIndex is int
+          && optionIndex >= 0
+          && optionIndex < get(pollPath(pollId)).data.options.size();
+      }
+      allow read: if isAdmin() || request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
+        && request.resource.data.pollId is string
+        && request.resource.data.optionIndex is int
+        && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
+        && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
+        && request.resource.data.count == 1
+        && pairedNewVote(request.resource.data.pollId, request.resource.data.optionIndex);
+      allow update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
+        && request.resource.data.pollId == resource.data.pollId
+        && request.resource.data.optionIndex == resource.data.optionIndex
+        && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
+        && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
+        && request.resource.data.count == resource.data.count + 1
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count'])
+        && pairedNewVote(request.resource.data.pollId, request.resource.data.optionIndex);
+      allow delete: if isAdmin();
     }
     // Galeria enxuta do jogo: as imagens são comprimidas e cada foto fica em seu documento.
     match /gameGallery/{photoId} {
