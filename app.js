@@ -188,6 +188,7 @@ const playerPhoneMatches=(a,b)=>{const x=phoneDigits(a),y=phoneDigits(b);return 
 const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function fridayWindowOpen(){const weekday=new Date(`${today}T00:00:00Z`).getUTCDay();return weekday===5||weekday===6||weekday===0}
 function upcoming(){const eligible=state.games.filter(g=>g.status!=='cancel'&&(fridayWindowOpen()?g.date>today:g.date>=today));return eligible.sort((a,b)=>a.date.localeCompare(b.date))[0]}
+function nextWeeklyGame(game){return state.games.filter(item=>item.id!==game.id&&item.status!=='cancel'&&item.date>game.date).sort((a,b)=>a.date.localeCompare(b.date))[0]||null}
 function field(id){return state.fields.find(f=>f.id===id)}
 function paidCount(g){return (g.players||[]).filter(p=>p.paid).length}
 function dueTotal(g){return (g.players||[]).reduce((sum,p)=>sum+(p.paid?0:Number(g.fee||0))+(g.foodFee&&p.foodWanted&&!p.foodPaid?Number(g.foodFee):0),0)}
