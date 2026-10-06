@@ -174,6 +174,11 @@ export async function saveRecord(collectionName, record) {
   const { id, ...data } = record;
   await firestore.setDoc(firestore.doc(db, collectionName, id), data);
 }
+export async function getRecord(collectionName, id) {
+  if (!cloudEnabled) return null;
+  const snapshot = await firestore.getDoc(firestore.doc(db, collectionName, id));
+  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+}
 export async function deleteRecord(collectionName, id) {
   if (!cloudEnabled) return;
   await firestore.deleteDoc(firestore.doc(db, collectionName, id));
