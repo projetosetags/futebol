@@ -140,7 +140,29 @@ async function activatePlayer(user, firstName, phone, identifier) {
 }
 export function listenToPlayerData(uid, onData, onError) {
   if (!cloudEnabled) return () => {};
-  return firestore.onSnapshot(firestore.doc(db, 'playerData', uid), snapshot => onData(snapshot.exists() ? snapshot.data() : null), onError);
+  let stopped = false;
+  let unsubscribe = null;
+  let retryTimer = null;
+  let attempts = 0;
+  const attach = () => {
+    if (stopped) return;
+    unsubscribe = firestore.onSnapshot(
+      firestore.doc(db, 'playerData', uid),
+      snapshot => { attempts = 0; onData(snapshot.exists() ? snapshot.data() : null); },
+      error => {
+        unsubscribe = null;
+        if (attempts < 5 && ['permission-denied', 'unavailable', 'deadline-exceeded'].includes(error?.code)) {
+          const delay = Math.min(750 * (2 ** attempts), 6000);
+          attempts += 1;
+          retryTimer = setTimeout(attach, delay);
+          return;
+        }
+        onError?.(error);
+      }
+    );
+  };
+  attach();
+  return () => { stopped = true; if (retryTimer) clearTimeout(retryTimer); unsubscribe?.(); };
 }
 export async function savePlayerData(uid, data) {
   if (!cloudEnabled) return;
