@@ -268,7 +268,7 @@ function exportCsv(){const lines=['Data,Horário,Jogo,Participante,Jogo pago,Ext
 
 setInterval(refreshPlayerAwardPanel,15000);
 document.addEventListener('click',e=>{
-271: const passwordToggle=e.target.closest('[data-toggle-password]');if(passwordToggle){const input=document.getElementById(passwordToggle.dataset.togglePassword);if(input){const show=input.type==='password';input.type=show?'text':'password';passwordToggle.textContent=show?'Ocultar':'Mostrar';passwordToggle.setAttribute('aria-pressed',String(show));}return}
+ const passwordToggle=e.target.closest('[data-toggle-password]');if(passwordToggle){const input=document.getElementById(passwordToggle.dataset.togglePassword);if(input){const show=input.type==='password';input.type=show?'text':'password';passwordToggle.textContent=show?'Ocultar':'Mostrar';passwordToggle.setAttribute('aria-pressed',String(show));}return}
  const pageBtn=e.target.closest('[data-page]');if(pageBtn){page=pageBtn.dataset.page;rosterGame=null;render();return}
  if(e.target.closest('#menuBtn')){document.querySelector('#sidebar').classList.toggle('open');return}
  if(e.target.matches('.modal-backdrop')||e.target.closest('button[data-close]')){closeModal();return}
