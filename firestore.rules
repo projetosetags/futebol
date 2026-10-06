@@ -25,8 +25,8 @@ service cloud.firestore {
       function pollPath(pollId) {
         return /databases/$(database)/documents/polls/$(pollId);
       }
-      function tallyPath(pollId, optionIndex) {
-        return /databases/$(database)/documents/pollTallies/$(pollId)-$(optionIndex);
+      function tallyPath(pollId, optionKey) {
+        return /databases/$(database)/documents/pollTallies/$(pollId + '-' + optionKey);
       }
       function voteIsOpen(pollId) {
         let poll = get(pollPath(pollId)).data;
@@ -39,13 +39,13 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'voterId', 'createdAt'])
         && request.resource.data.pollId is string
-        && request.resource.data.optionIndex is int
-        && request.resource.data.optionIndex >= 0
+        && request.resource.data.optionIndex is string
+        && request.resource.data.optionIndex.matches('^(0|[1-9][0-9]*)
         && request.resource.data.voterId == request.auth.uid
         && request.resource.data.createdAt is string
         && voteId == request.resource.data.pollId + '-' + request.auth.uid
         && exists(pollPath(request.resource.data.pollId))
-        && request.resource.data.optionIndex < get(pollPath(request.resource.data.pollId)).data.options.size()
+        && int(request.resource.data.optionIndex) < get(pollPath(request.resource.data.pollId)).data.options.size()
         && voteIsOpen(request.resource.data.pollId)
         && !exists(/databases/$(database)/documents/pollVotes/$(voteId))
         && existsAfter(tallyPath(request.resource.data.pollId, request.resource.data.optionIndex))
@@ -57,25 +57,25 @@ service cloud.firestore {
       function pollPath(pollId) {
         return /databases/$(database)/documents/polls/$(pollId);
       }
-      function pairedNewVote(pollId, optionIndex) {
-        let votePath = /databases/$(database)/documents/pollVotes/$(pollId)-$(request.auth.uid);
+      function pairedNewVote(pollId, optionKey) {
+        let votePath = /databases/$(database)/documents/pollVotes/$(pollId + '-' + request.auth.uid);
         return !exists(votePath)
           && existsAfter(votePath)
           && getAfter(votePath).data.pollId == pollId
-          && getAfter(votePath).data.optionIndex == optionIndex
+          && getAfter(votePath).data.optionIndex == optionKey
           && getAfter(votePath).data.voterId == request.auth.uid;
       }
-      function validPollOption(pollId, optionIndex) {
+      function validPollOption(pollId, optionKey) {
         return exists(pollPath(pollId))
-          && optionIndex is int
-          && optionIndex >= 0
-          && optionIndex < get(pollPath(pollId)).data.options.size();
+          && optionKey is string
+          && optionKey.matches('^(0|[1-9][0-9]*)
+          && int(optionKey) < get(pollPath(pollId)).data.options.size();
       }
       allow read: if isAdmin() || request.auth != null;
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
         && request.resource.data.pollId is string
-        && request.resource.data.optionIndex is int
+        && request.resource.data.optionIndex is string
         && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
         && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
         && request.resource.data.count == 1
@@ -83,6 +83,371 @@ service cloud.firestore {
       allow update: if request.auth != null
         && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
         && request.resource.data.pollId == resource.data.pollId
+        && request.resource.data.optionIndex is string
+        && request.resource.data.optionIndex == resource.data.optionIndex
+        && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
+        && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
+        && request.resource.data.count == resource.data.count + 1
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count'])
+        && pairedNewVote(request.resource.data.pollId, request.resource.data.optionIndex);
+      allow delete: if isAdmin();
+    }
+    // Galeria enxuta do jogo: as imagens são comprimidas e cada foto fica em seu documento.
+    match /gameGallery/{photoId} {
+      allow read: if isAdmin() || request.auth != null;
+      allow write: if isAdmin();
+    }
+    // A lista de candidatos e a janela ficam disponíveis somente a usuários autenticados.
+    match /gameAwardBallots/{gameId} {
+      allow read: if isAdmin() || request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /gameAwardVotes/{voteId} {
+      function ballot() {
+        return get(/databases/$(database)/documents/gameAwardBallots/$(request.resource.data.gameId)).data;
+      }
+      allow get, list: if isAdmin() || request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['gameId', 'teamId', 'candidatePlayerId', 'voterId', 'createdAt'])
+        && request.resource.data.gameId is string
+        && request.resource.data.teamId in ['team-1', 'team-2', 'team-3']
+        && request.resource.data.candidatePlayerId is string
+        && request.resource.data.voterId == request.auth.uid
+        && voteId == request.resource.data.gameId + '-' + request.resource.data.teamId + '-' + request.auth.uid
+        && request.resource.data.createdAt is string
+        && ballot().eligibleVoterIds.hasAny([request.auth.uid])
+        && ballot().teams[request.resource.data.teamId].candidateIds.hasAny([request.resource.data.candidatePlayerId])
+        && request.time >= ballot().opensAt
+        && request.time <= ballot().closesAt
+        && !exists(/databases/$(database)/documents/gameAwardVotes/$(voteId));
+      allow update, delete: if isAdmin();
+    }
+    match /playerAccessRequests/{uid} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['firstName', 'fullName', 'nickname', 'phone', 'createdAt', 'status'])
+        && request.resource.data.firstName is string
+        && request.resource.data.fullName is string
+        && request.resource.data.nickname is string
+        && request.resource.data.phone is string
+        && request.resource.data.firstName.size() <= 30
+        && request.resource.data.fullName.size() <= 100
+        && request.resource.data.nickname.size() <= 40
+        && request.resource.data.phone.matches('^[0-9]{9,11}$')
+        && request.resource.data.createdAt is string
+        && request.resource.data.status == 'approved';
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow update: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'approved');
+      allow delete: if isAdmin();
+    }
+    // Índice por hash de nome + telefone local para aceitar login com nome, nome completo ou apelido.
+    // O documento contém apenas o e-mail sintético do Firebase, sem expor o telefone.
+    match /playerLoginAliases/{aliasId} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+    match /playerData/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid && resource.data.approved == true);
+      allow create: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/playerAccessRequests/$(uid))
+        && get(/databases/$(database)/documents/playerAccessRequests/$(uid)).data.status == 'approved'
+        && request.resource.data.keys().hasOnly(['name', 'nickname', 'phone', 'approved', 'createdAt'])
+        && request.resource.data.keys().hasAll(['name', 'nickname', 'phone', 'approved', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() <= 40
+        && request.resource.data.phone is string
+        && request.resource.data.phone.matches('^[0-9]{9,11}$')
+        && request.resource.data.approved == true
+        && request.resource.data.createdAt is string);
+      allow delete: if isAdmin();
+      allow update: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceChoices'])
+        && request.resource.data.attendanceChoices is map
+        && request.resource.data.attendanceChoices.keys().size() <= 30);
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+          && int(optionKey) < get(pollPath(pollId)).data.options.size();
+      }
+      allow read: if isAdmin() || request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
+        && request.resource.data.pollId is string
+        && request.resource.data.optionIndex is string
+        && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
+        && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
+        && request.resource.data.count == 1
+        && pairedNewVote(request.resource.data.pollId, request.resource.data.optionIndex);
+      allow update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
+        && request.resource.data.pollId == resource.data.pollId
+        && request.resource.data.optionIndex is string
+        && request.resource.data.optionIndex == resource.data.optionIndex
+        && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
+        && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
+        && request.resource.data.count == resource.data.count + 1
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count'])
+        && pairedNewVote(request.resource.data.pollId, request.resource.data.optionIndex);
+      allow delete: if isAdmin();
+    }
+    // Galeria enxuta do jogo: as imagens são comprimidas e cada foto fica em seu documento.
+    match /gameGallery/{photoId} {
+      allow read: if isAdmin() || request.auth != null;
+      allow write: if isAdmin();
+    }
+    // A lista de candidatos e a janela ficam disponíveis somente a usuários autenticados.
+    match /gameAwardBallots/{gameId} {
+      allow read: if isAdmin() || request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /gameAwardVotes/{voteId} {
+      function ballot() {
+        return get(/databases/$(database)/documents/gameAwardBallots/$(request.resource.data.gameId)).data;
+      }
+      allow get, list: if isAdmin() || request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['gameId', 'teamId', 'candidatePlayerId', 'voterId', 'createdAt'])
+        && request.resource.data.gameId is string
+        && request.resource.data.teamId in ['team-1', 'team-2', 'team-3']
+        && request.resource.data.candidatePlayerId is string
+        && request.resource.data.voterId == request.auth.uid
+        && voteId == request.resource.data.gameId + '-' + request.resource.data.teamId + '-' + request.auth.uid
+        && request.resource.data.createdAt is string
+        && ballot().eligibleVoterIds.hasAny([request.auth.uid])
+        && ballot().teams[request.resource.data.teamId].candidateIds.hasAny([request.resource.data.candidatePlayerId])
+        && request.time >= ballot().opensAt
+        && request.time <= ballot().closesAt
+        && !exists(/databases/$(database)/documents/gameAwardVotes/$(voteId));
+      allow update, delete: if isAdmin();
+    }
+    match /playerAccessRequests/{uid} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['firstName', 'fullName', 'nickname', 'phone', 'createdAt', 'status'])
+        && request.resource.data.firstName is string
+        && request.resource.data.fullName is string
+        && request.resource.data.nickname is string
+        && request.resource.data.phone is string
+        && request.resource.data.firstName.size() <= 30
+        && request.resource.data.fullName.size() <= 100
+        && request.resource.data.nickname.size() <= 40
+        && request.resource.data.phone.matches('^[0-9]{9,11}$')
+        && request.resource.data.createdAt is string
+        && request.resource.data.status == 'approved';
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow update: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'approved');
+      allow delete: if isAdmin();
+    }
+    // Índice por hash de nome + telefone local para aceitar login com nome, nome completo ou apelido.
+    // O documento contém apenas o e-mail sintético do Firebase, sem expor o telefone.
+    match /playerLoginAliases/{aliasId} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+    match /playerData/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid && resource.data.approved == true);
+      allow create: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/playerAccessRequests/$(uid))
+        && get(/databases/$(database)/documents/playerAccessRequests/$(uid)).data.status == 'approved'
+        && request.resource.data.keys().hasOnly(['name', 'nickname', 'phone', 'approved', 'createdAt'])
+        && request.resource.data.keys().hasAll(['name', 'nickname', 'phone', 'approved', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() <= 40
+        && request.resource.data.phone is string
+        && request.resource.data.phone.matches('^[0-9]{9,11}$')
+        && request.resource.data.approved == true
+        && request.resource.data.createdAt is string);
+      allow delete: if isAdmin();
+      allow update: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceChoices'])
+        && request.resource.data.attendanceChoices is map
+        && request.resource.data.attendanceChoices.keys().size() <= 30);
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && request.resource.data.voterId == request.auth.uid
+        && request.resource.data.createdAt is string
+        && voteId == request.resource.data.pollId + '-' + request.auth.uid
+        && exists(pollPath(request.resource.data.pollId))
+        && int(request.resource.data.optionIndex) < get(pollPath(request.resource.data.pollId)).data.options.size()
+        && voteIsOpen(request.resource.data.pollId)
+        && !exists(/databases/$(database)/documents/pollVotes/$(voteId))
+        && existsAfter(tallyPath(request.resource.data.pollId, request.resource.data.optionIndex))
+        && getAfter(tallyPath(request.resource.data.pollId, request.resource.data.optionIndex)).data.pollId == request.resource.data.pollId
+        && getAfter(tallyPath(request.resource.data.pollId, request.resource.data.optionIndex)).data.optionIndex == request.resource.data.optionIndex;
+      allow update, delete: if isAdmin();
+    }
+    match /pollTallies/{tallyId} {
+      function pollPath(pollId) {
+        return /databases/$(database)/documents/polls/$(pollId);
+      }
+      function pairedNewVote(pollId, optionKey) {
+        let votePath = /databases/$(database)/documents/pollVotes/$(pollId + '-' + request.auth.uid);
+        return !exists(votePath)
+          && existsAfter(votePath)
+          && getAfter(votePath).data.pollId == pollId
+          && getAfter(votePath).data.optionIndex == optionKey
+          && getAfter(votePath).data.voterId == request.auth.uid;
+      }
+      function validPollOption(pollId, optionKey) {
+        return exists(pollPath(pollId))
+          && optionKey is string
+          && optionKey.matches('^(0|[1-9][0-9]*)
+          && int(optionKey) < get(pollPath(pollId)).data.options.size();
+      }
+      allow read: if isAdmin() || request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
+        && request.resource.data.pollId is string
+        && request.resource.data.optionIndex is string
+        && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
+        && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
+        && request.resource.data.count == 1
+        && pairedNewVote(request.resource.data.pollId, request.resource.data.optionIndex);
+      allow update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
+        && request.resource.data.pollId == resource.data.pollId
+        && request.resource.data.optionIndex is string
+        && request.resource.data.optionIndex == resource.data.optionIndex
+        && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
+        && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
+        && request.resource.data.count == resource.data.count + 1
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count'])
+        && pairedNewVote(request.resource.data.pollId, request.resource.data.optionIndex);
+      allow delete: if isAdmin();
+    }
+    // Galeria enxuta do jogo: as imagens são comprimidas e cada foto fica em seu documento.
+    match /gameGallery/{photoId} {
+      allow read: if isAdmin() || request.auth != null;
+      allow write: if isAdmin();
+    }
+    // A lista de candidatos e a janela ficam disponíveis somente a usuários autenticados.
+    match /gameAwardBallots/{gameId} {
+      allow read: if isAdmin() || request.auth != null;
+      allow write: if isAdmin();
+    }
+    match /gameAwardVotes/{voteId} {
+      function ballot() {
+        return get(/databases/$(database)/documents/gameAwardBallots/$(request.resource.data.gameId)).data;
+      }
+      allow get, list: if isAdmin() || request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['gameId', 'teamId', 'candidatePlayerId', 'voterId', 'createdAt'])
+        && request.resource.data.gameId is string
+        && request.resource.data.teamId in ['team-1', 'team-2', 'team-3']
+        && request.resource.data.candidatePlayerId is string
+        && request.resource.data.voterId == request.auth.uid
+        && voteId == request.resource.data.gameId + '-' + request.resource.data.teamId + '-' + request.auth.uid
+        && request.resource.data.createdAt is string
+        && ballot().eligibleVoterIds.hasAny([request.auth.uid])
+        && ballot().teams[request.resource.data.teamId].candidateIds.hasAny([request.resource.data.candidatePlayerId])
+        && request.time >= ballot().opensAt
+        && request.time <= ballot().closesAt
+        && !exists(/databases/$(database)/documents/gameAwardVotes/$(voteId));
+      allow update, delete: if isAdmin();
+    }
+    match /playerAccessRequests/{uid} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['firstName', 'fullName', 'nickname', 'phone', 'createdAt', 'status'])
+        && request.resource.data.firstName is string
+        && request.resource.data.fullName is string
+        && request.resource.data.nickname is string
+        && request.resource.data.phone is string
+        && request.resource.data.firstName.size() <= 30
+        && request.resource.data.fullName.size() <= 100
+        && request.resource.data.nickname.size() <= 40
+        && request.resource.data.phone.matches('^[0-9]{9,11}$')
+        && request.resource.data.createdAt is string
+        && request.resource.data.status == 'approved';
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow update: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'approved');
+      allow delete: if isAdmin();
+    }
+    // Índice por hash de nome + telefone local para aceitar login com nome, nome completo ou apelido.
+    // O documento contém apenas o e-mail sintético do Firebase, sem expor o telefone.
+    match /playerLoginAliases/{aliasId} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+    match /playerData/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid && resource.data.approved == true);
+      allow create: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/playerAccessRequests/$(uid))
+        && get(/databases/$(database)/documents/playerAccessRequests/$(uid)).data.status == 'approved'
+        && request.resource.data.keys().hasOnly(['name', 'nickname', 'phone', 'approved', 'createdAt'])
+        && request.resource.data.keys().hasAll(['name', 'nickname', 'phone', 'approved', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() <= 40
+        && request.resource.data.phone is string
+        && request.resource.data.phone.matches('^[0-9]{9,11}$')
+        && request.resource.data.approved == true
+        && request.resource.data.createdAt is string);
+      allow delete: if isAdmin();
+      allow update: if isAdmin() || (request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceChoices'])
+        && request.resource.data.attendanceChoices is map
+        && request.resource.data.attendanceChoices.keys().size() <= 30);
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+          && int(optionKey) < get(pollPath(pollId)).data.options.size();
+      }
+      allow read: if isAdmin() || request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
+        && request.resource.data.pollId is string
+        && request.resource.data.optionIndex is string
+        && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
+        && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
+        && request.resource.data.count == 1
+        && pairedNewVote(request.resource.data.pollId, request.resource.data.optionIndex);
+      allow update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
+        && request.resource.data.pollId == resource.data.pollId
+        && request.resource.data.optionIndex is string
         && request.resource.data.optionIndex == resource.data.optionIndex
         && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
         && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
