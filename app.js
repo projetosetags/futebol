@@ -181,16 +181,16 @@ function syncPlayerLoginAliases(){if(!playerAccountsLoaded||!accessRequestsLoade
  const fullName=String(name).trim(), first=fullName.split(/\s+/)[0], aliases=new Set([fullName]);
  if(playerKey(first)!==playerKey(fullName)){
   const collisions=state.players.filter(other=>{
-   const otherRequest=accessRequests.find(item=>item.id===playerAccounts.find(row=>row.playerId===other.id)?.id);
+   const otherAccount=playerAccounts.find(row=>row.playerId===other.id); const otherRequest=accessRequests.find(item=>item.id===otherAccount?.id);
    const otherPhone=otherRequest?.phone||other.phone||'123456';
    if(playerPhoneDigits(otherPhone)!==playerPhoneDigits(phone))return false;
-   const otherNames=[other.name,other.nickname,...(other.aliases||[])].filter(Boolean);
+   const otherNames=[other.name,other.nickname,otherAccount?.displayName,otherAccount?.displayNickname,...(other.aliases||[])].filter(Boolean);
    return otherNames.some(value=>playerKey(value)===playerKey(first)||playerKey(String(value).trim().split(/\s+/)[0])===playerKey(first));
   });
   if(collisions.length<=1)aliases.add(first);
  }
  for(const alias of aliases){const id=await playerAliasId(alias,phone);expected.set(id,{id,email})}
- }}const saved=new Map(loginAliases.map(row=>[row.id,row.email]));for(const [id,row] of expected)if(saved.get(id)!==row.email)await saveRecord('playerLoginAliases',row)}).catch(()=>toast('Não foi possível sincronizar os nomes de acesso. Confira as regras do Firestore.'));}
+ }}const saved=new Map(loginAliases.map(row=>[row.id,row.email]));for(const [id,row] of expected)if(saved.get(id)!==row.email)await saveRecord('playerLoginAliases',row)}).catch(()=>toast('Não foi possível sincronizar os nomes de acesso. Confira as regras do Firestore.'));return loginAliasSyncPromise;}
 function findParticipantForAccess(rec){const phone=rec.phone||'';const byPhone=state.players.filter(p=>phone&&p.phone&&playerPhoneMatches(phone,p.phone));if(byPhone.length===1)return byPhone[0];if(byPhone.length>1)return null;const keys=[rec.firstName,rec.fullName,rec.nickname,rec.name,rec.alias].filter(Boolean).map(playerKey);const exact=state.players.filter(p=>[p.name,p.nickname,...(p.aliases||[])].filter(Boolean).some(name=>keys.includes(playerKey(name))));return exact.length===1?exact[0]:null;}
 async function attachPlayerAccount(rec,request){let player=findParticipantForAccess({...rec,...request});if(!player){let id=`p-${rec.id}`;if(state.players.some(p=>p.id===id))id=`${id}-${Date.now()}`;player={id,name:String(request?.fullName||request?.name||rec.name||request?.firstName||'Jogador').trim(),nickname:String(request?.nickname||rec.nickname||request?.fullName||rec.name||'').trim(),phone:String(request?.phone||rec.phone||''),active:true};state.players.push(player)}else{player.phone=player.phone||request?.phone||rec.phone||'';player.nickname=player.nickname||request?.nickname||rec.nickname||''}ensurePlayerInUpcomingGame(player);const linked={...rec,playerId:player.id,approved:true};await saveAppData(state);await savePlayerData(rec.id,{...buildPlayerSnapshot(player),playerId:player.id,approved:true,attendanceChoices:rec.attendanceChoices||{}});syncGameRosters();if(request&&request.status!=='approved')await saveRecord('playerAccessRequests',{...request,status:'approved'});playerAccounts=playerAccounts.map(x=>x.id===rec.id?linked:x);if(request)accessRequests=accessRequests.map(x=>x.id===request.id?{...request,status:'approved'}:x);syncPlayerSnapshots();localStorage.setItem(KEY,JSON.stringify(state));render();}
 let playerBatchProvisionInFlight = false;
