@@ -7,7 +7,7 @@ const SHELL = [
   "./styles.css?v=20261007-week-player-choice-v7",
   "./app.js?v=20261007-week-player-choice-v7",
   "./firebase.js",
-  "./firebase.js?v=20261007-week-player-choice-v7",
+  "./firebase.js?v=20261007-player-game-choice-v6",
   "./firebase-config.js",
   "./manifest-lideranca.webmanifest",
   "./manifest-jogador.webmanifest",
