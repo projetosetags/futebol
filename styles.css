@@ -65,3 +65,7 @@
 .player-choice-option small{color:var(--muted);font-size:11px}
 .player-choice-option.choice-disabled{opacity:.55}
 @media(max-width:600px){.player-choice-grid{grid-template-columns:1fr}.roster-team-tag{margin:4px 0 0;display:table}}
+
+/* Escalação do jogador agrupada em blocos na ordem dos times. */
+.full-roster-teams{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
+.full-roster-teams .weekly-team-card{width:100%;margin:0}
