@@ -10,13 +10,13 @@
   "theme_color": "#0c231c",
   "icons": [
     {
-      "src": "./icons/futebol-lideranca-192.png",
+      "src": "./icons/futebol-lideranca-192.png?v=20261007-icon-png-fix2",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "./icons/futebol-lideranca-512.png",
+      "src": "./icons/futebol-lideranca-512.png?v=20261007-icon-png-fix2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
