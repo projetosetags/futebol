@@ -201,6 +201,13 @@ export async function savePlayerData(uid, data) {
   if (!cloudEnabled) return;
   await firestore.setDoc(firestore.doc(db, 'playerData', uid), data);
 }
+export async function updateMyPlayerProfile(uid, displayName, displayNickname) {
+  if (!cloudEnabled) return;
+  await firestore.updateDoc(firestore.doc(db, 'playerData', uid), {
+    displayName: String(displayName || '').trim(),
+    displayNickname: String(displayNickname || '').trim()
+  });
+}
 export async function savePlayerAttendance(uid, attendanceChoices) {
   if (!cloudEnabled) return;
   await firestore.updateDoc(firestore.doc(db, 'playerData', uid), { attendanceChoices });

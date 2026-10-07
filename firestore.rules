@@ -176,9 +176,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
       allow update: if isAdmin() || (request.auth != null
         && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceChoices'])
-        && request.resource.data.attendanceChoices is map
-        && request.resource.data.attendanceChoices.keys().size() <= 30);
+        && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceChoices'])
+          && request.resource.data.attendanceChoices is map
+          && request.resource.data.attendanceChoices.keys().size() <= 30
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'displayNickname'])
+          && request.resource.data.displayName is string
+          && request.resource.data.displayName.size() > 0
+          && request.resource.data.displayName.size() <= 100
+          && request.resource.data.displayNickname is string
+          && request.resource.data.displayNickname.size() <= 40));
     }
     match /{document=**} {
       allow read, write: if false;
