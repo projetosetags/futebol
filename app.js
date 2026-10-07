@@ -1,4 +1,4 @@
-import { cloudEnabled, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261007-player-game-choice-v4';
+import { cloudEnabled, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261007-player-game-choice-v5';
 import { firebaseConfig } from './firebase-config.js';
 
 const KEY = 'society-gramado-v1';
@@ -292,22 +292,16 @@ function playerFieldLinks(game){const shared=sharedGameRosters.find(item=>item.i
 function playerRosterPanel(game){
  if(!game)return '';
  const venue=game.field||defaultFields.find(item=>item.id===scheduleTemplates.find(template=>template.date===game.date)?.fieldId)?.name||'Gramado';
- let roster=Array.isArray(game.roster)?game.roster:[];
+ let roster=Array.isArray(game.roster)?game.roster.slice():[];
  if(!roster.length&&game.date==='2026-10-09')roster=octoberNineRoster.map((name,index)=>({name,position:'Jogador',signupNumber:index+1}));
  const teams=Array.isArray(game.teams)?game.teams.slice(0,3):[];
- const players=roster.filter(entry=>entry.position!=='Goleiro');let keepers=roster.filter(entry=>entry.position==='Goleiro');
- if(!keepers.length&&Array.isArray(game.goalkeepers))keepers=game.goalkeepers.filter(Boolean).map(name=>({name,position:'Goleiro'}));
+ const goalkeepers=Array.isArray(game.goalkeepers)?game.goalkeepers.filter(Boolean):[];
+ if(!roster.some(entry=>entry.position==='Goleiro'))for(const name of goalkeepers){if(!roster.some(entry=>playerKey(entry.name)===playerKey(name)))roster.push({name,position:'Goleiro',signupNumber:roster.length+1})}
  const teamFor=entry=>{if(Number.isInteger(entry.teamIndex)&&entry.teamIndex>=0&&entry.teamIndex<teams.length)return entry.teamIndex;return teams.findIndex(team=>(team.playerIds||[]).includes(entry.playerId)||(Array.isArray(team.players)?team.players:teamPlayerNames(team)).some(name=>playerKey(name)===playerKey(entry.name))||(entry.position==='Goleiro'&&playerKey(team.goalkeeper)===playerKey(entry.name)))};
- const indexed=players.map((entry,index)=>({...entry,signupNumber:Number(entry.signupNumber)||index+1,teamIndex:teamFor(entry)}));
- const indexedKeepers=keepers.map((entry,index)=>({...entry,signupNumber:'G'+(index+1),teamIndex:teamFor(entry)}));
- const row=(entry,label,colorClass)=>'<div class="week-player '+(colorClass||'')+'"><span class="number">'+label+'</span><span>'+esc(entry.name)+'</span><small>'+esc(entry.position||'Jogador')+'</small></div>';
- const panels=teams.map((team,index)=>{const members=indexed.filter(entry=>entry.teamIndex===index).sort((a,b)=>a.signupNumber-b.signupNumber),goalies=indexedKeepers.filter(entry=>entry.teamIndex===index);return '<section class="weekly-team-card team-color-'+(index+1)+'"><div class="weekly-team-head"><strong>'+esc(team.name||'TIME 0'+(index+1))+'</strong><span>'+members.length+' jogadores</span></div><div class="week-roster">'+(members.length?members.map(entry=>row(entry,String(entry.signupNumber).padStart(2,'0'),'')).join(''):'<div class="team-empty">Aguardando divisão dos administradores.</div>')+'</div>'+(goalies.length?'<div class="weekly-goalkeepers"><b>Goleiro</b>'+goalies.map(entry=>row(entry,entry.signupNumber,'')).join('')+'</div>':'')+'</section>'});
- const unassigned=indexed.filter(entry=>entry.teamIndex<0).sort((a,b)=>a.signupNumber-b.signupNumber);
- const unassignedKeepers=indexedKeepers.filter(entry=>entry.teamIndex<0);
- const waiting=unassigned.length||unassignedKeepers.length?'<section class="weekly-team-card team-color-waiting"><div class="weekly-team-head"><strong>Inscritos aguardando divisão</strong><span>'+unassigned.length+' jogadores</span></div><div class="week-roster">'+unassigned.map(entry=>row(entry,String(entry.signupNumber).padStart(2,'0'),'')).join('')+'</div>'+(unassignedKeepers.length?'<div class="weekly-goalkeepers"><b>Goleiros sem time</b>'+unassignedKeepers.map(entry=>row(entry,entry.signupNumber,'')).join('')+'</div>':'')+'</section>':'';
- const teamContent=teams.length?'<div class="weekly-team-grid">'+panels.join('')+waiting+'</div>':'<section class="weekly-team-card team-color-waiting"><div class="weekly-team-head"><strong>Inscritos · ordem de cadastro</strong><span>'+players.length+' jogadores</span></div><div class="week-roster">'+indexed.map(entry=>row(entry,String(entry.signupNumber).padStart(2,'0'),'')).join('')+'</div>'+(indexedKeepers.length?'<div class="weekly-goalkeepers"><b>Goleiros</b>'+indexedKeepers.map(entry=>row(entry,entry.signupNumber,'')).join('')+'</div>':'')+'<p class="sub">Os administradores ainda não definiram os times.</p></section>';
+ const indexed=roster.map((entry,index)=>({...entry,signupNumber:Number(entry.signupNumber)||index+1,teamIndex:teamFor(entry)})).sort((a,b)=>a.signupNumber-b.signupNumber);
+ const rows=indexed.map(entry=>{const teamName=entry.teamIndex>=0?teams[entry.teamIndex]?.name||`TIME 0${entry.teamIndex+1}`:'Aguardando divisão',color=entry.teamIndex>=0?'team-color-'+(entry.teamIndex+1):'team-color-waiting';return `<div class="week-player full-roster-player ${color}"><span class="number">${String(entry.signupNumber).padStart(2,'0')}</span><span class="full-roster-name">${esc(entry.name)}<span class="roster-team-tag">${esc(teamName)}</span></span><small>${esc(entry.position||'Jogador')}</small></div>`}).join('');
  const modeLabel=game.teamAssignmentMode==='random'?'Sorteio aleatório':'Escolha dos administradores';
- return '<section class="panel"><div class="panel-head"><h3>Inscritos desta semana</h3><small>'+players.length+' inscritos · Ordem de inscrição · '+esc(localDate(game.date))+'</small></div><p class="sub"><b>'+esc(venue)+'</b>'+playerFieldLinks(game)+' · Divisão: '+modeLabel+'. Lista atualizada conforme as inscrições.</p>'+teamContent+'</section>';
+ return `<section class="panel full-roster-panel"><div class="panel-head"><div><h3>Escalação completa</h3><small class="subcell">${indexed.length} inscritos · ordem de inscrição</small></div></div><p class="sub"><b>${esc(venue)}</b>${playerFieldLinks(game)} · ${modeLabel}. Todos os jogadores e goleiros aparecem nesta lista contínua.</p><div class="full-roster-list">${rows||'<div class="empty">Nenhum inscrito nesta semana.</div>'}</div></section>`;
 }
 function applyPlayerChoices(rows){
  let changed=false;
