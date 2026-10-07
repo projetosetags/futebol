@@ -35,3 +35,16 @@
 @media(max-width:700px){.weekly-team-grid{grid-template-columns:1fr}.team-assignment-control{grid-template-columns:1fr}.team-assignment-control small{grid-column:1}}
 
 .team-chip{display:inline-flex;align-items:center;margin:0 0 5px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.02em;background:#f3f5f4;color:#56625b}.team-chip.team-color-1{background:#edf5ff;color:#1769d2}.team-chip.team-color-2{background:#eaf8f1;color:#16845d}.team-chip.team-color-3{background:#f4effb;color:#8054c7}.team-chip.team-color-waiting{background:#f3f5f4;color:#78847e}
+
+@media(max-width:700px){
+ .player-payments-table{width:100%;min-width:0;display:block;border-collapse:separate;border-spacing:0}
+ .player-payments-table thead{display:none}
+ .player-payments-table tbody{display:grid;gap:12px}
+ .player-payments-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 8px;padding:10px;border:1px solid var(--line);border-radius:14px;background:#fff}
+ .player-payments-table td{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-width:0;padding:6px 4px;border:0;overflow-wrap:anywhere}
+ .player-payments-table td::before{content:attr(data-label);display:block;margin-bottom:5px;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+ .player-payments-table td:first-child,.player-payments-table td:nth-child(4){grid-column:1/-1}
+ .player-payments-table td:first-child .subcell{max-width:100%;overflow-wrap:anywhere}
+ .player-payments-table td[data-label="Disponibilidade"] select{width:100%;max-width:100%;white-space:normal}
+ .player-payments-table td[data-label="Débito"]{align-items:flex-start}
+}
