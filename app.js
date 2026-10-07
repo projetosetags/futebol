@@ -194,6 +194,7 @@ function buildPlayerSnapshot(player){const games=state.games.filter(g=>(g.player
 function playerFieldLinks(game){const shared=sharedGameRosters.find(item=>item.id===game.id),known=state.fields.find(item=>playerKey(item.name)===playerKey(game.field)),template=scheduleTemplates.find(item=>item.date===game.date),fallback=known||defaultFields.find(item=>item.id===template?.fieldId),maps=game.maps||shared?.maps||fallback?.maps||'',waze=game.waze||shared?.waze||fallback?.waze||'';return (maps?` · <a class="link" href="${esc(maps)}" target="_blank" rel="noopener">Google Maps ↗</a>`:'')+(waze?` · <a class="link" href="${esc(waze)}" target="_blank" rel="noopener">Waze ↗</a>`:'')}
 function playerRosterPanel(game){
  if(!game)return '';
+ const venue=game.field||defaultFields.find(item=>item.id===scheduleTemplates.find(template=>template.date===game.date)?.fieldId)?.name||'Gramado';
  let roster=Array.isArray(game.roster)?game.roster:[];
  if(!roster.length&&game.date==='2026-10-09')roster=octoberNineRoster.map(name=>({name,position:'Jogador'}));
  const players=roster.filter(entry=>entry.position!=='Goleiro');
@@ -202,7 +203,7 @@ function playerRosterPanel(game){
  const row=(entry,label)=>'<div class="week-player"><span class="number">'+label+'</span><span>'+(entry?esc(entry.name):'<span class="subcell">Vaga aberta</span>')+'</span><small>'+(entry?esc(entry.position):'')+'</small></div>';
  const playerRows=Array.from({length:Math.max(16,players.length)},(_,index)=>row(players[index],String(index+1).padStart(2,'0'))).join('');
  const keeperRows=Array.from({length:Math.max(2,keepers.length)},(_,index)=>row(keepers[index],'G'+(index+1))).join('');
- return '<section class="panel"><div class="panel-head"><h3>Inscritos desta semana</h3><small>'+players.length+' inscritos · Ordem de inscrição · '+esc(localDate(game.date))+'</small></div><p class="sub">Todos os jogadores veem esta lista. Os nomes seguem a ordem em que foram incluídos.</p><div class="week-roster">'+playerRows+'</div><h4 style="margin:16px 0 8px">Goleiros</h4><div class="week-roster">'+keeperRows+'</div></section>';
+ return '<section class="panel"><div class="panel-head"><h3>Inscritos desta semana</h3><small>'+players.length+' inscritos · Ordem de inscrição · '+esc(localDate(game.date))+'</small></div><p class="sub"><b>'+esc(venue)+'</b>'+playerFieldLinks(game)+' · Todos os jogadores veem a lista atualizada conforme as inscrições.</p><div class="week-roster">'+playerRows+'</div><h4 style="margin:16px 0 8px">Goleiros</h4><div class="week-roster">'+keeperRows+'</div></section>';
 }
 function applyPlayerChoices(rows){let changed=false;for(const account of rows){if(!account.playerId||!account.attendanceChoices)continue;const player=state.players.find(x=>x.id===account.playerId);if(!player)continue;for(const [gameId,choice] of Object.entries(account.attendanceChoices)){if(!['friday','saturday'].includes(choice))continue;const game=state.games.find(g=>g.id===gameId),entry=game?.players.find(p=>p.playerId===player.id||p.name.toLocaleLowerCase('pt-BR')===player.name.toLocaleLowerCase('pt-BR'));if(entry&&entry.attendance!==choice){entry.attendance=choice;changed=true}}}if(changed)persist()}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
