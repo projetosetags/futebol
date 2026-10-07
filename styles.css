@@ -11,3 +11,25 @@
 .player-polls .eyebrow{color:var(--green);font-size:10px;font-weight:800;letter-spacing:.9px}.poll-choices{display:grid;gap:10px;margin-top:12px}.poll-choice{display:grid;gap:7px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fbfdfb}.poll-choice-line{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--ink);font-size:13px}.poll-choice-line b{color:var(--green);white-space:nowrap}.poll-meter{height:6px;border-radius:99px;background:#e8efeb;overflow:hidden}.poll-meter i{display:block;height:100%;border-radius:inherit;background:var(--green);transition:width .25s ease}.poll-choice .btn{justify-self:start;margin-top:3px}.poll-choice .btn:disabled{opacity:.55}
 
 .password-input-row{position:relative;display:flex;align-items:center}.password-input-row input{padding-right:82px!important}.password-toggle{position:absolute;right:8px;border:0;background:transparent;color:var(--green);font-size:12px;font-weight:700;padding:8px;cursor:pointer}.password-toggle:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:6px}
+
+
+/* Divisão visual da lista semanal por time */
+.weekly-team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px;margin-top:12px}
+.weekly-team-card{--team-color:#506171;--team-tint:#f2f5f7;border:1px solid var(--line);border-top:4px solid var(--team-color);border-radius:16px;background:#fff;padding:14px;min-width:0}
+.weekly-team-card.team-color-1{--team-color:#1769d2;--team-tint:#edf5ff}
+.weekly-team-card.team-color-2{--team-color:#16845d;--team-tint:#eaf8f1}
+.weekly-team-card.team-color-3{--team-color:#8054c7;--team-tint:#f4effb}
+.weekly-team-card.team-color-waiting{--team-color:#78847e;--team-tint:#f3f5f4}
+.weekly-team-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;color:var(--team-color)}
+.weekly-team-head strong{font-size:14px}
+.weekly-team-head span{font-size:11px;color:var(--muted);white-space:nowrap}
+.weekly-team-card .week-roster{grid-template-columns:1fr}
+.weekly-team-card .week-player{background:var(--team-tint);border-color:color-mix(in srgb,var(--team-color) 24%,white);border-left:4px solid var(--team-color)}
+.weekly-team-card .week-player .number{color:var(--team-color)}
+.weekly-goalkeepers{display:grid;gap:7px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.weekly-goalkeepers>b{font-size:11px;color:var(--team-color)}
+.team-empty{padding:12px;border-radius:10px;background:var(--team-tint);color:var(--muted);font-size:12px}
+.team-assignment-control{display:grid;grid-template-columns:minmax(200px,1fr) auto;align-items:end;gap:12px;margin-bottom:12px}
+.team-assignment-control .field{margin:0}
+.team-assignment-control small{grid-column:1/-1;color:var(--muted);line-height:1.45}
+@media(max-width:700px){.weekly-team-grid{grid-template-columns:1fr}.team-assignment-control{grid-template-columns:1fr}.team-assignment-control small{grid-column:1}}
