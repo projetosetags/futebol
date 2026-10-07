@@ -48,7 +48,7 @@ if (configured) {
       const note = admin.querySelector('.note');
       if (note && !note.dataset.craquePhotoRule) {
         note.dataset.craquePhotoRule = '1';
-        note.insertAdjacentHTML('beforebegin', '<p class="sub craque-photo-rule"><b>Fotos:</b> para 2 times, use 4 imagens: Time 1, Craque do Time 1, Time 2 e Craque do Time 2. O craque é definido pelo maior número de votos do próprio time.</p>');
+        note.insertAdjacentHTML('beforebegin', '<p class="sub craque-photo-rule"><b>Fotos:</b> para 2 times, use 4 imagens: Time 1, Craque do Time 1, Time 2 e Craque do Time 2. As fotos dos craques serão feitas por IA, destacando o vencedor no meio do próprio time, e inseridas aqui depois. O craque é definido pelo maior número de votos do próprio time.</p>');
       }
     }
   }
