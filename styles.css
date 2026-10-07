@@ -33,3 +33,5 @@
 .team-assignment-control .field{margin:0}
 .team-assignment-control small{grid-column:1/-1;color:var(--muted);line-height:1.45}
 @media(max-width:700px){.weekly-team-grid{grid-template-columns:1fr}.team-assignment-control{grid-template-columns:1fr}.team-assignment-control small{grid-column:1}}
+
+.team-chip{display:inline-flex;align-items:center;margin:0 0 5px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.02em;background:#f3f5f4;color:#56625b}.team-chip.team-color-1{background:#edf5ff;color:#1769d2}.team-chip.team-color-2{background:#eaf8f1;color:#16845d}.team-chip.team-color-3{background:#f4effb;color:#8054c7}.team-chip.team-color-waiting{background:#f3f5f4;color:#78847e}

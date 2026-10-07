@@ -29,12 +29,13 @@ function playerPhoneDigits(phone) {
 function playerStoredPhone(phone) {
   return String(phone || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
 }
-function playerEmail(firstName, phone) {
-  const name = String(firstName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  return `${name}.${playerPhoneDigits(phone)}@players.futebol-society.com`;
+function playerEmail(firstName, phone, uniqueSuffix = '') {
+  const name = String(firstName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jogador';
+  const suffix = String(uniqueSuffix || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return `${name}${suffix ? `.${suffix}` : ''}.${playerPhoneDigits(phone)}@players.futebol-society.com`;
 }
-export function playerEmailFor(firstName, phone) {
-  return playerEmail(firstName, phone);
+export function playerEmailFor(firstName, phone, uniqueSuffix = '') {
+  return playerEmail(firstName, phone, uniqueSuffix);
 }
 function playerAliasKey(name) {
   return String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]/g, '');
@@ -54,9 +55,9 @@ async function getPlayerProvisioningAuth() {
   playerProvisioningAuth = { auth: authModule.getAuth(app), authModule };
   return playerProvisioningAuth;
 }
-export async function provisionPlayerAccount(name, phone) {
+export async function provisionPlayerAccount(name, phone, emailOverride = '') {
   const password = playerPhoneDigits(phone) || '123456';
-  const email = playerEmail(name, password);
+  const email = String(emailOverride || playerEmail(name, password)).trim().toLowerCase();
   const { auth: secondaryAuth, authModule } = await getPlayerProvisioningAuth();
   try {
     const credential = await authModule.createUserWithEmailAndPassword(secondaryAuth, email, password);
