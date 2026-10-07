@@ -1,4 +1,4 @@
-const CACHE_NAME = "futebol-shell-v12";
+const CACHE_NAME = "futebol-shell-v13";
 const SHELL = [
   "./",
   "./index.html",
