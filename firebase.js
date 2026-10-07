@@ -5,6 +5,7 @@ let db = null;
 let firestore = null;
 let authSdk = null;
 let auth = null;
+let playerProvisioningAuth = null;
 if (configured) {
   const sdk = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js');
   firestore = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
@@ -42,6 +43,38 @@ export async function playerAliasId(name, phone) {
   const value = `${playerAliasKey(name)}:${playerPhoneDigits(phone)}`;
   const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+async function getPlayerProvisioningAuth() {
+  if (playerProvisioningAuth) return playerProvisioningAuth;
+  const appSdk = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js');
+  const authModule = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
+  let app;
+  try { app = appSdk.getApp('society-player-provisioner'); }
+  catch { app = appSdk.initializeApp(firebaseConfig, 'society-player-provisioner'); }
+  playerProvisioningAuth = { auth: authModule.getAuth(app), authModule };
+  return playerProvisioningAuth;
+}
+export async function provisionPlayerAccount(name, phone) {
+  const password = playerPhoneDigits(phone) || '123456';
+  const email = playerEmail(name, password);
+  const { auth: secondaryAuth, authModule } = await getPlayerProvisioningAuth();
+  try {
+    const credential = await authModule.createUserWithEmailAndPassword(secondaryAuth, email, password);
+    await authModule.signOut(secondaryAuth);
+    return { uid: credential.user.uid, email, password };
+  } catch (error) {
+    if (error.code !== 'auth/email-already-in-use') throw error;
+    const passwords = [...new Set([password, playerStoredPhone(phone)].filter(Boolean))];
+    let lastError = error;
+    for (const candidate of passwords) {
+      try {
+        const credential = await authModule.signInWithEmailAndPassword(secondaryAuth, email, candidate);
+        await authModule.signOut(secondaryAuth);
+        return { uid: credential.user.uid, email, password: candidate };
+      } catch (signInError) { lastError = signInError; }
+    }
+    throw lastError;
+  }
 }
 export async function signInPlayer(identifier, phone) {
   const localDigits = playerPhoneDigits(phone);
