@@ -198,7 +198,7 @@ function playerRosterPanel(game){
  let roster=Array.isArray(game.roster)?game.roster:[];
  if(!roster.length&&game.date==='2026-10-09')roster=octoberNineRoster.map((name,index)=>({name,position:'Jogador',signupNumber:index+1}));
  const teams=Array.isArray(game.teams)?game.teams.slice(0,3):[];
- const players=roster.filter(entry=>entry.position!=='Goleiro'),keepers=roster.filter(entry=>entry.position==='Goleiro');
+ const players=roster.filter(entry=>entry.position!=='Goleiro');let keepers=roster.filter(entry=>entry.position==='Goleiro');
  if(!keepers.length&&Array.isArray(game.goalkeepers))keepers=game.goalkeepers.filter(Boolean).map(name=>({name,position:'Goleiro'}));
  const teamFor=entry=>{if(Number.isInteger(entry.teamIndex)&&entry.teamIndex>=0&&entry.teamIndex<teams.length)return entry.teamIndex;return teams.findIndex(team=>(team.playerIds||[]).includes(entry.playerId)||(Array.isArray(team.players)?team.players:teamPlayerNames(team)).some(name=>playerKey(name)===playerKey(entry.name))||(entry.position==='Goleiro'&&playerKey(team.goalkeeper)===playerKey(entry.name)))};
  const indexed=players.map((entry,index)=>({...entry,signupNumber:Number(entry.signupNumber)||index+1,teamIndex:teamFor(entry)}));
