@@ -1,4 +1,4 @@
-import { cloudEnabled, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261007-roster-team-sync-v4';
+import { cloudEnabled, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261007-player-game-choice-v1';
 import { firebaseConfig } from './firebase-config.js';
 
 const KEY = 'society-gramado-v1';
@@ -176,7 +176,7 @@ async function readLocalReceipt(key){const db=await openReceiptDb();const value=
 function openReceipt(ref){const popup=window.open('about:blank','_blank');readLocalReceipt(ref.slice('localreceipt:'.length)).then(file=>{if(!file){popup?.close();toast('Este comprovante está salvo somente no dispositivo onde foi anexado.');return}const url=URL.createObjectURL(file);if(popup)popup.location.href=url;setTimeout(()=>URL.revokeObjectURL(url),60000)}).catch(()=>{popup?.close();toast('Não foi possível abrir o comprovante neste dispositivo.')})}
 function receiptCell(p){if(!p.receipt)return '—';if(p.receipt.startsWith('localreceipt:'))return `<button type="button" class="link" data-action="open-receipt" data-receipt="${esc(p.receipt)}">Abrir arquivo ↗</button>`;return `<a class="link" href="${esc(p.receipt)}" target="_blank" rel="noopener">Ver arquivo ↗</a>`}
 function persist(){localStorage.setItem(KEY,JSON.stringify(state)); saveAppData(state).then(()=>{syncPlayerSnapshots();syncPlayerLoginAliases();syncGameAwardBallots();syncGameRosters()}).catch(()=>toast('Não foi possível sincronizar com Firebase. Confira as regras do Firestore.'));}
-function syncPlayerSnapshots(){if(!playerAccountsLoaded||!currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(currentUser.uid))return;playerSyncPromise=playerSyncPromise.then(async()=>{for(const rec of playerAccounts){const player=state.players.find(p=>p.id===rec.playerId);if(player)await savePlayerData(rec.id,{...buildPlayerSnapshot(player),playerId:player.id,approved:true,loginEmail:rec.loginEmail||'',loginPhone:rec.loginPhone||'',displayName:rec.displayName||'',displayNickname:rec.displayNickname||'',attendanceChoices:rec.attendanceChoices||{}})}}).catch(()=>toast('Não foi possível atualizar os saldos dos jogadores.'));}
+function syncPlayerSnapshots(){if(!playerAccountsLoaded||!currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(currentUser.uid))return;playerSyncPromise=playerSyncPromise.then(async()=>{for(const rec of playerAccounts){const player=state.players.find(p=>p.id===rec.playerId);if(player)await savePlayerData(rec.id,{...buildPlayerSnapshot(player),playerId:player.id,approved:true,loginEmail:rec.loginEmail||'',loginPhone:rec.loginPhone||'',displayName:rec.displayName||'',displayNickname:rec.displayNickname||'',attendanceChoices:playerAttendanceChoices(player,rec.attendanceChoices||{})})}}).catch(()=>toast('Não foi possível atualizar os saldos dos jogadores.'));}
 function syncGameRosters(){if(!appDataLoaded||!currentUser||currentUser.role!=='admin')return;for(const game of state.games.filter(item=>item.status!=='played'&&item.status!=='cancel')){const venue=field(game.fieldId),teams=(game.teams||[]).map((team,index)=>({name:team.name||'TIME 0'+(index+1),playerIds:Array.isArray(team.playerIds)?team.playerIds.slice():teamPlayerNames(team).map(name=>findTeamPlayer(name)?.id).filter(Boolean),players:teamPlayerNames(team),goalkeeper:team.goalkeeper||'',goalkeeperId:findTeamPlayer(team.goalkeeper)?.id||''}));const assignedIndex=player=>teams.findIndex(team=>team.playerIds.includes(player.playerId||player.id)||team.players.some(name=>playerKey(name)===playerKey(player.name))||(player.position==='Goleiro'&&(team.goalkeeperId===(player.playerId||player.id)||playerKey(team.goalkeeper)===playerKey(player.name))));saveRecord('gameRosters',{id:game.id,date:game.date,time:game.time||'19:30',field:venue?.name||'Gramado',maps:venue?.maps||game.maps||'',waze:venue?.waze||game.waze||'',roster:(game.players||[]).map((player,index)=>({name:player.name,position:player.position==='Goleiro'?'Goleiro':'Jogador',playerId:player.playerId||findTeamPlayer(player.name)?.id||'',signupNumber:index+1,teamIndex:assignedIndex(player)})),teams,teamAssignmentMode:game.teamAssignmentMode||'manual',goalkeepers:teams.map(team=>team.goalkeeper).filter(Boolean),updatedAt:new Date().toISOString()}).catch(()=>toast('Não foi possível atualizar a lista dos jogadores.'));}}
 function syncPlayerLoginAliases(){
  if(!playerAccountsLoaded||!accessRequestsLoaded||!loginAliasesLoaded||!currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(currentUser.uid))return Promise.resolve(false);
@@ -309,7 +309,42 @@ function playerRosterPanel(game){
  const modeLabel=game.teamAssignmentMode==='random'?'Sorteio aleatório':'Escolha dos administradores';
  return '<section class="panel"><div class="panel-head"><h3>Inscritos desta semana</h3><small>'+players.length+' inscritos · Ordem de inscrição · '+esc(localDate(game.date))+'</small></div><p class="sub"><b>'+esc(venue)+'</b>'+playerFieldLinks(game)+' · Divisão: '+modeLabel+'. Lista atualizada conforme as inscrições.</p>'+teamContent+'</section>';
 }
-function applyPlayerChoices(rows){let changed=false;for(const account of rows){if(!account.playerId||!account.attendanceChoices)continue;const player=state.players.find(x=>x.id===account.playerId);if(!player)continue;for(const [gameId,choice] of Object.entries(account.attendanceChoices)){if(!['friday','saturday'].includes(choice))continue;const game=state.games.find(g=>g.id===gameId),entry=game?.players.find(p=>p.playerId===player.id||p.name.toLocaleLowerCase('pt-BR')===player.name.toLocaleLowerCase('pt-BR'));if(entry&&entry.attendance!==choice){entry.attendance=choice;changed=true}}}if(changed)persist()}
+function applyPlayerChoices(rows){
+ let changed=false;
+ for(const account of rows){
+  if(!account.playerId||!account.attendanceChoices)continue;
+  const player=state.players.find(item=>item.id===account.playerId);if(!player)continue;
+  for(const [gameId,rawChoice] of Object.entries(account.attendanceChoices)){
+   const choice=rawChoice&&typeof rawChoice==='object'?rawChoice:{attendance:rawChoice};
+   const game=state.games.find(item=>item.id===gameId);if(!game)continue;
+   let entry=game.players.find(item=>item.playerId===player.id||playerKey(item.name)===playerKey(player.name));
+   if(['friday','saturday'].includes(choice.attendance)&&entry&&entry.attendance!==choice.attendance){entry.attendance=choice.attendance;changed=true}
+   if(typeof choice.joined==='boolean'){
+    if(choice.joined&&!entry&&game.date>=today&&game.status!=='cancel'&&game.status!=='played'){
+     addParticipantToGame(game,player,choice.position||'Jogador');
+     entry=game.players.find(item=>item.playerId===player.id||playerKey(item.name)===playerKey(player.name));
+     if(entry)changed=true;
+    }else if(!choice.joined&&entry&&game.date>today&&!entry.paid&&!entry.foodPaid){
+     game.players=game.players.filter(item=>item!==entry);
+     for(const team of game.teams||[]){team.playerIds=(team.playerIds||[]).filter(id=>id!==player.id);team.players=(team.players||[]).filter(name=>playerKey(name)!==playerKey(player.name))}
+     entry=null;changed=true;
+    }
+   }
+   if(entry&&typeof choice.foodWanted==='boolean'&&(!entry.foodPaid||choice.foodWanted)&&entry.foodWanted!==choice.foodWanted){entry.foodWanted=choice.foodWanted;if(!choice.foodWanted)entry.foodPaid=false;changed=true}
+   if(entry&&['Jogador','Goleiro'].includes(choice.position)&&entry.position!==choice.position){entry.position=choice.position;changed=true}
+  }
+ }
+ if(changed)persist();
+}
+function playerAttendanceChoices(player,existing={}){
+ const choices={...(existing||{})};
+ for(const game of state.games.filter(item=>item.date>=today&&item.status!=='cancel'&&item.status!=='played')){
+  const entry=(game.players||[]).find(item=>item.playerId===player.id||playerKey(item.name)===playerKey(player.name));
+  const old=choices[game.id],oldChoice=old&&typeof old==='object'?old:{attendance:old};
+  choices[game.id]={...oldChoice,joined:!!entry,foodWanted:!!entry?.foodWanted,position:entry?.position||oldChoice.position||'Jogador',attendance:entry?.attendance||oldChoice.attendance||'friday'};
+ }
+ return choices;
+}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function formatPix(value){const digits=String(value||'').replace(/\D/g,'');return digits.length===11?`${digits.slice(0,2)} ${digits.slice(2,3)} ${digits.slice(3,7)} ${digits.slice(7)}`:digits}
