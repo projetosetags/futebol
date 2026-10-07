@@ -1,16 +1,21 @@
-const CACHE_NAME = "futebol-shell-v1";
+const CACHE_NAME = "futebol-shell-v2";
 const SHELL = [
   "./",
+  "./index.html",
   "./jogador.html",
   "./styles.css",
-  "./styles.css?v=20261005-mobile-fit",
-  "./app.js?v=20261005-approve",
-  "./firebase.js?v=20261005-approve",
+  "./styles.css?v=20261007-show-all-payments-fix17",
+  "./app.js?v=20261007-game-fields-fix18",
+  "./firebase.js",
   "./firebase-config.js",
-  "./manifest.webmanifest",
-  "./icons/futebol-180.png",
-  "./icons/futebol-192.png",
-  "./icons/futebol-512.png"
+  "./manifest-lideranca.webmanifest",
+  "./manifest-jogador.webmanifest",
+  "./icons/futebol-lideranca-180.png",
+  "./icons/futebol-lideranca-192.png",
+  "./icons/futebol-lideranca-512.png",
+  "./icons/futebol-jogador-180.png",
+  "./icons/futebol-jogador-192.png",
+  "./icons/futebol-jogador-512.png"
 ];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)));
