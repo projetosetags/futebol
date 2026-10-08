@@ -1,11 +1,11 @@
-const CACHE_NAME = "futebol-shell-v25";
+const CACHE_NAME = "futebol-shell-v26";
 const SHELL = [
   "./",
   "./index.html",
   "./jogador.html",
   "./styles.css",
-  "./styles.css?v=20261008-admin-agenda-v18",
-  "./app.js?v=20261008-admin-agenda-v18",
+  "./styles.css?v=20261008-agenda-compacta-v19",
+  "./app.js?v=20261008-agenda-compacta-v19",
   "./firebase.js",
   "./firebase.js?v=20261007-player-game-choice-v6",
   "./firebase-config.js",
