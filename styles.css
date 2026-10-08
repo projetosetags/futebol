@@ -18,7 +18,6 @@
 .weekly-team-card{--team-color:#506171;--team-tint:#f2f5f7;border:1px solid var(--line);border-top:4px solid var(--team-color);border-radius:16px;background:#fff;padding:14px;min-width:0}
 .weekly-team-card.team-color-1{--team-color:#1769d2;--team-tint:#edf5ff}
 .weekly-team-card.team-color-2{--team-color:#16845d;--team-tint:#eaf8f1}
-.weekly-team-card.team-color-3{--team-color:#8054c7;--team-tint:#f4effb}
 .weekly-team-card.team-color-waiting{--team-color:#78847e;--team-tint:#f3f5f4}
 .weekly-team-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;color:var(--team-color)}
 .weekly-team-head strong{font-size:14px}
@@ -34,7 +33,7 @@
 .team-assignment-control small{grid-column:1/-1;color:var(--muted);line-height:1.45}
 @media(max-width:700px){.weekly-team-grid{grid-template-columns:1fr}.team-assignment-control{grid-template-columns:1fr}.team-assignment-control small{grid-column:1}}
 
-.team-chip{display:inline-flex;align-items:center;margin:0 0 5px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.02em;background:#f3f5f4;color:#56625b}.team-chip.team-color-1{background:#edf5ff;color:#1769d2}.team-chip.team-color-2{background:#eaf8f1;color:#16845d}.team-chip.team-color-3{background:#f4effb;color:#8054c7}.team-chip.team-color-waiting{background:#f3f5f4;color:#78847e}
+.team-chip{display:inline-flex;align-items:center;margin:0 0 5px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.02em;background:#f3f5f4;color:#56625b}.team-chip.team-color-1{background:#edf5ff;color:#1769d2}.team-chip.team-color-2{background:#eaf8f1;color:#16845d}.team-chip.team-color-waiting{background:#f3f5f4;color:#78847e}
 
 @media(max-width:700px){
  .player-payments-table{width:100%;min-width:0;display:block;border-collapse:separate;border-spacing:0}
@@ -55,7 +54,6 @@
 .roster-team-tag{display:inline-flex;margin-left:8px;padding:2px 7px;border-radius:999px;background:#fff;color:var(--team-color,#506171);font-size:9px;font-weight:800;white-space:nowrap}
 .full-roster-player.team-color-1{--team-color:#1769d2;background:#edf5ff;border-color:#c9ddfb;border-left:4px solid #1769d2}
 .full-roster-player.team-color-2{--team-color:#16845d;background:#eaf8f1;border-color:#c6e8d9;border-left:4px solid #16845d}
-.full-roster-player.team-color-3{--team-color:#8054c7;background:#f4effb;border-color:#ded2f2;border-left:4px solid #8054c7}
 .full-roster-player.team-color-waiting{--team-color:#78847e;background:#f3f5f4;border-left:4px solid #78847e}
 .player-game-selection{margin-bottom:14px}
 .player-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}
@@ -69,3 +67,18 @@
 /* Escalação do jogador agrupada em blocos na ordem dos times. */
 .full-roster-teams{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
 .full-roster-teams .weekly-team-card{width:100%;margin:0}
+
+
+/* Correções de PIX combinado, perfil do jogador e escalação */
+.player-payment-total{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:13px 15px;border:1px solid #b7dfce;border-radius:13px;background:#edf8f2;color:var(--ink,#14231d)}
+.player-payment-total span{color:var(--muted);font-size:13px;font-weight:650}
+.player-payment-total strong{font-size:20px;font-variant-numeric:tabular-nums;color:var(--green,#16845d);white-space:nowrap}
+.player-profile-panel input[type="text"]{width:100%;min-height:46px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink,#14231d);font:inherit}
+.player-profile-panel input[type="text"]:focus{outline:3px solid rgba(22,132,93,.18);border-color:var(--green,#16845d)}
+.goalkeeper-highlight{margin-top:12px;padding:11px;border:1px solid color-mix(in srgb,var(--team-color) 30%,white);border-radius:13px;background:color-mix(in srgb,var(--team-tint) 72%,white)}
+.goalkeeper-highlight>b{display:block;margin:0 0 8px;color:var(--team-color);font-size:11px;letter-spacing:.08em}
+.goalkeeper-row{border:2px solid var(--team-color)!important;border-left-width:6px!important;background:linear-gradient(90deg,var(--team-tint),#fff)!important}
+.goalkeeper-row .number{font-size:17px}
+.goalkeeper-row .roster-team-tag{background:var(--team-color);color:#fff}
+.team-player-option[hidden]{display:none!important}
+@media(max-width:600px){.player-payment-total{align-items:flex-start}.player-payment-total span{font-size:12px}.player-payment-total strong{font-size:18px}.goalkeeper-highlight{padding:9px}}
