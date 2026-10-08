@@ -82,3 +82,29 @@
 .goalkeeper-row .roster-team-tag{background:var(--team-color);color:#fff}
 .team-player-option[hidden]{display:none!important}
 @media(max-width:600px){.player-payment-total{align-items:flex-start}.player-payment-total span{font-size:12px}.player-payment-total strong{font-size:18px}.goalkeeper-highlight{padding:9px}}
+
+/* Agenda administrativa completa com foco no jogo da semana */
+.admin-games-agenda{display:grid;gap:14px}
+.admin-game-agenda{display:grid;grid-template-columns:minmax(150px,180px) minmax(0,1fr) auto;align-items:center;gap:14px;padding:15px;border:1px solid var(--line);border-radius:15px;background:#fff}
+.admin-game-agenda.is-week{border:2px solid #16845d;background:linear-gradient(110deg,#eaf8f1 0%,#fff 72%);box-shadow:0 5px 18px rgba(22,132,93,.10)}
+.admin-agenda-date{display:grid;justify-items:start;gap:5px;min-width:0}
+.admin-agenda-date>strong{font-size:17px;color:var(--ink)}
+.admin-agenda-date>span:not(.admin-agenda-badge){color:var(--muted);font-size:12px;text-transform:capitalize}
+.admin-agenda-badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:#eef1f0;color:#69766f;font-size:9px;font-weight:800;letter-spacing:.07em}
+.admin-agenda-badge.week-badge{background:#16845d;color:#fff}
+.admin-agenda-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;min-width:0}
+.admin-agenda-details>div{display:grid;align-content:start;gap:4px;min-width:0}
+.admin-agenda-details small{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.06em}
+.admin-agenda-details strong{color:var(--ink);font-size:12px;overflow-wrap:anywhere}
+.admin-agenda-location{grid-column:span 2}
+.admin-agenda-location>span{color:#9a6c23;font-size:10px}
+.admin-agenda-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+@media(max-width:760px){
+ .admin-game-agenda{grid-template-columns:minmax(0,1fr);gap:12px}
+ .admin-agenda-date{grid-template-columns:auto 1fr;align-items:center;column-gap:8px}
+ .admin-agenda-date>strong,.admin-agenda-date>span:not(.admin-agenda-badge){grid-column:2}
+ .admin-agenda-badge{grid-row:1 / span 2}
+ .admin-agenda-details{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .admin-agenda-location{grid-column:1 / -1}
+ .admin-agenda-actions{justify-content:flex-start}
+}
