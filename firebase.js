@@ -252,10 +252,24 @@ export async function saveAppData(data) {
 }
 export function listenToRecords(collectionName, onData, onError) {
   if (!cloudEnabled) return () => {};
-  return firestore.onSnapshot(firestore.collection(db, collectionName), snapshot => {
-    onData(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
-  }, onError);
+  let stopped = false, unsubscribe = null, timer = null, attempts = 0;
+  const attach = () => {
+    if (stopped) return;
+    unsubscribe = firestore.onSnapshot(firestore.collection(db, collectionName), snapshot => {
+      attempts = 0;
+      onData(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
+    }, error => {
+      unsubscribe = null;
+      onError?.(error);
+      if (!stopped && collectionName === 'gameRegistrations' && ['permission-denied', 'unavailable', 'deadline-exceeded'].includes(error?.code)) {
+        timer = setTimeout(attach, Math.min(1000 * (2 ** attempts++), 15000));
+      }
+    });
+  };
+  attach();
+  return () => { stopped = true; if (timer) clearTimeout(timer); unsubscribe?.(); };
 }
+
 export function listenToMyPollVotes(uid, onData, onError) {
   if (!cloudEnabled) return () => {};
   const votes = firestore.query(
@@ -329,6 +343,6 @@ export async function reserveGameParticipation(gameId, joined) {
     choices[gameId] = { ...previous, joined, position, fieldUpdatedAt: { ...(previous.fieldUpdatedAt || {}), joined: new Date().toISOString() } };
     if (changed) transaction.set(slotsRef, { ...record, lineSlots, keeperSlots, nextSequence, updatedAt: firestore.serverTimestamp() });
     transaction.update(profileRef, { attendanceChoices: choices });
-    return { joined, position, sequence: target[playerId]?.sequence || 0, attendanceChoices: choices };
+    return { joined, position, sequence: target[playerId]?.sequence || 0, attendanceChoices: choices, registration: { id: gameId, ...record, lineSlots, keeperSlots, nextSequence } };
   });
 }
