@@ -32,7 +32,7 @@ service cloud.firestore {
         let poll = get(pollPath(pollId)).data;
         return !('expiresAt' in poll)
           || poll.expiresAt == ''
-          || (('expiresAtMs' in poll) && request.time.seconds * 1000 <= poll.expiresAtMs);
+          || (('expiresAtMs' in poll) && request.time.toMillis() <= poll.expiresAtMs);
       }
       allow get: if isAdmin() || (request.auth != null && resource.data.voterId == request.auth.uid);
       allow list: if isAdmin() || (request.auth != null && resource.data.voterId == request.auth.uid);
@@ -137,7 +137,7 @@ service cloud.firestore {
           && profile().playerId is string
           && game().registrationMode == 'first-confirmed-v1'
           && game().status != 'played' && game().status != 'cancel'
-          && request.time.seconds * 1000 <= game().signupClosesAtMs;
+          && request.time.toMillis() <= game().signupClosesAtMs;
       }
       function validNewSlot(slot, keeper, sequence) {
         return slot.keys().hasOnly(['uid', 'playerId', 'name', 'sequence', 'joinedAt'])
@@ -145,8 +145,8 @@ service cloud.firestore {
           && slot.name == profile().name && slot.name is string
           && slot.sequence == sequence && slot.sequence is int
           && slot.joinedAt == request.time
-          && (keeper ? profile().gamePositions.get(gameId, 'Jogador') == 'Goleiro'
-            : profile().gamePositions.get(gameId, 'Jogador') != 'Goleiro');
+          && (keeper ? profile().get('gamePositions', {}).get(gameId, 'Jogador') == 'Goleiro'
+            : profile().get('gamePositions', {}).get(gameId, 'Jogador') != 'Goleiro');
       }
       function validSlots(data, oldLines, oldKeepers, oldSequence) {
         let id = playerId();

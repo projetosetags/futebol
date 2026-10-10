@@ -1,14 +1,14 @@
-const CACHE_NAME = "futebol-shell-v37";
+const CACHE_NAME = "futebol-shell-v38";
 const SHELL = [
   "./",
   "./index.html",
   "./jogador.html",
   "./styles.css",
-  "./styles.css?v=20261010-signup-recovery-v30",
-  "./app.js?v=20261010-signup-recovery-v30",
-  "./event-0910-photos.js?v=20261010-signup-recovery-v30",
+  "./styles.css?v=20261010-admin-confirm-v31",
+  "./app.js?v=20261010-admin-confirm-v31",
+  "./event-0910-photos.js?v=20261010-admin-confirm-v31",
   "./firebase.js",
-  "./firebase.js?v=20261010-signup-recovery-v9",
+  "./firebase.js?v=20261010-admin-confirm-v10",
   "./firebase-config.js",
   "./manifest-lideranca.webmanifest",
   "./manifest-jogador.webmanifest",

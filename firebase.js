@@ -346,3 +346,25 @@ export async function reserveGameParticipation(gameId, joined) {
     return { joined, position, sequence: target[playerId]?.sequence || 0, attendanceChoices: choices, registration: { id: gameId, ...record, lineSlots, keeperSlots, nextSequence } };
   });
 }
+
+export async function reserveAdminGameParticipation(game, player, position, joined) {
+  if (!cloudEnabled || !auth.currentUser || !(firebaseConfig.adminUids || [firebaseConfig.adminUid]).includes(auth.currentUser.uid)) throw new Error('Entre com a conta administrativa.');
+  if (!player?.id) throw new Error('Participante sem vínculo no cadastro.');
+  const ref = firestore.doc(db, 'gameRegistrations', game.id);
+  return firestore.runTransaction(db, async transaction => {
+    const snapshot = await transaction.get(ref);
+    const record = snapshot.exists() ? snapshot.data() : { gameId: game.id, date: game.date, version: 1, lineCapacity: 16, keeperCapacity: 2, nextSequence: 0, lineSlots: {}, keeperSlots: {} };
+    const lineSlots = { ...record.lineSlots }, keeperSlots = { ...record.keeperSlots }, previous = lineSlots[player.id] || keeperSlots[player.id];
+    delete lineSlots[player.id]; delete keeperSlots[player.id];
+    let nextSequence = Number(record.nextSequence || 0);
+    if (joined) {
+      const target = position === 'Goleiro' ? keeperSlots : lineSlots, capacity = position === 'Goleiro' ? 2 : 16;
+      if (Object.keys(target).length >= capacity) throw new Error(position === 'Goleiro' ? 'As 2 vagas de goleiro estão preenchidas.' : 'As 16 vagas de jogadores estão preenchidas.');
+      const sequence = previous?.sequence || ++nextSequence;
+      target[player.id] = { uid: previous?.uid || '', playerId: player.id, name: player.name, sequence, joinedAt: previous?.joinedAt || firestore.serverTimestamp() };
+    }
+    const data = { ...record, lineSlots, keeperSlots, nextSequence, updatedAt: firestore.serverTimestamp() };
+    transaction.set(ref, data);
+    return { id: game.id, ...data };
+  });
+}
