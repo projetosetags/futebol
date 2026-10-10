@@ -1,12 +1,12 @@
-const CACHE_NAME = "futebol-shell-v39";
+const CACHE_NAME = "futebol-shell-v40";
 const SHELL = [
   "./",
   "./index.html",
   "./jogador.html",
   "./styles.css",
-  "./styles.css?v=20261010-vote-maps-v32",
-  "./app.js?v=20261010-vote-maps-v32",
-  "./event-0910-photos.js?v=20261010-vote-maps-v32",
+  "./styles.css?v=20261010-health-history-v33",
+  "./app.js?v=20261010-health-history-v33",
+  "./event-0910-photos.js?v=20261010-health-history-v33",
   "./firebase.js",
   "./firebase.js?v=20261010-admin-confirm-v10",
   "./firebase-config.js",
@@ -42,3 +42,4 @@ self.addEventListener("fetch", event => {
     }).catch(() => caches.match(request).then(cached => cached || caches.match("./")))
   );
 });
+
