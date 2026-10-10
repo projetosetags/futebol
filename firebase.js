@@ -200,7 +200,31 @@ export function listenToPlayerData(uid, onData, onError) {
 }
 export async function savePlayerData(uid, data) {
   if (!cloudEnabled) return;
-  await firestore.setDoc(firestore.doc(db, 'playerData', uid), data);
+  const ref = firestore.doc(db, 'playerData', uid);
+  if (!data.attendanceChoices) { await firestore.setDoc(ref, data); return; }
+  await firestore.runTransaction(db, async transaction => {
+    const snapshot = await transaction.get(ref);
+    const existing = snapshot.exists() ? snapshot.data() : {};
+    const choices = structuredClone(data.attendanceChoices);
+    for (const [gameId, latest] of Object.entries(existing.attendanceChoices || {})) {
+      if (!latest || typeof latest !== 'object') continue;
+      const proposed = choices[gameId] || {};
+      for (const field of ['joined', 'foodWanted', 'attendance']) {
+        if (!Object.prototype.hasOwnProperty.call(latest, field)) continue;
+        const newest = Date.parse(latest.fieldUpdatedAt?.[field] || '') || 0;
+        const outgoing = Date.parse(proposed.fieldUpdatedAt?.[field] || '') || 0;
+        if (newest <= outgoing) continue;
+        proposed[field] = latest[field];
+        proposed.fieldUpdatedAt = { ...(proposed.fieldUpdatedAt || {}), [field]: latest.fieldUpdatedAt[field] };
+        if (field === 'joined' && latest.position) proposed.position = latest.position;
+      }
+      choices[gameId] = proposed;
+    }
+    transaction.set(ref, { ...data, attendanceChoices: choices,
+      displayName: existing.displayName ?? data.displayName ?? '',
+      displayNickname: existing.displayNickname ?? data.displayNickname ?? ''
+    });
+  });
 }
 export async function updateMyPlayerProfile(uid, displayName, displayNickname) {
   if (!cloudEnabled) return;
