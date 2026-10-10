@@ -299,3 +299,36 @@ export async function deleteRecord(collectionName, id) {
   if (!cloudEnabled) return;
   await firestore.deleteDoc(firestore.doc(db, collectionName, id));
 }
+
+export async function reserveGameParticipation(gameId, joined) {
+  if (!cloudEnabled || !auth.currentUser) throw new Error('Entre no app para confirmar sua vaga.');
+  const uid = auth.currentUser.uid, profileRef = firestore.doc(db, 'playerData', uid);
+  const gameRef = firestore.doc(db, 'gameRosters', gameId), slotsRef = firestore.doc(db, 'gameRegistrations', gameId);
+  return firestore.runTransaction(db, async transaction => {
+    const [profileSnap, gameSnap, slotSnap] = await Promise.all([transaction.get(profileRef), transaction.get(gameRef), transaction.get(slotsRef)]);
+    const profile = profileSnap.data(), game = gameSnap.data();
+    if (!profile?.playerId || !profile.approved) throw new Error('Seu cadastro precisa estar vinculado ao participante para reservar a vaga.');
+    if (!game || game.registrationMode !== 'first-confirmed-v1') throw new Error('O administrador precisa atualizar a abertura das inscrições deste jogo.');
+    if (game.status === 'played' || game.status === 'cancel' || Date.now() > game.signupClosesAtMs) throw new Error('As inscrições deste jogo estão encerradas.');
+    const record = slotSnap.exists() ? slotSnap.data() : { gameId, date: game.date, version: 1, lineCapacity: 16, keeperCapacity: 2, nextSequence: 0, lineSlots: {}, keeperSlots: {} };
+    const lineSlots = { ...record.lineSlots }, keeperSlots = { ...record.keeperSlots }, playerId = profile.playerId;
+    const position = profile.gamePositions?.[gameId] === 'Goleiro' ? 'Goleiro' : 'Jogador';
+    const target = position === 'Goleiro' ? keeperSlots : lineSlots;
+    const other = position === 'Goleiro' ? lineSlots : keeperSlots;
+    let nextSequence = record.nextSequence || 0, changed = false;
+    if (joined && !target[playerId]) {
+      const limit = position === 'Goleiro' ? 2 : 16;
+      if (Object.keys(target).length >= limit) throw new Error(position === 'Goleiro' ? 'As 2 vagas de goleiro já foram preenchidas.' : 'As 16 vagas já foram preenchidas. Aguarde alguém liberar uma vaga.');
+      delete other[playerId]; nextSequence++;
+      target[playerId] = { uid, playerId, name: profile.name, sequence: nextSequence, joinedAt: firestore.serverTimestamp() };
+      changed = true;
+    } else if (!joined && (lineSlots[playerId] || keeperSlots[playerId])) {
+      delete lineSlots[playerId]; delete keeperSlots[playerId]; changed = true;
+    }
+    const choices = { ...(profile.attendanceChoices || {}) }, previous = choices[gameId] || {};
+    choices[gameId] = { ...previous, joined, position, fieldUpdatedAt: { ...(previous.fieldUpdatedAt || {}), joined: new Date().toISOString() } };
+    if (changed) transaction.set(slotsRef, { ...record, lineSlots, keeperSlots, nextSequence, updatedAt: firestore.serverTimestamp() });
+    transaction.update(profileRef, { attendanceChoices: choices });
+    return { joined, position, sequence: target[playerId]?.sequence || 0, attendanceChoices: choices };
+  });
+}
