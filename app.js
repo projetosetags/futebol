@@ -634,7 +634,7 @@ function gamePhotoForm(game){
   try{
    const prepared=await Promise.all(slots.map(async(slot,i)=>{const file=form.elements[`image${i}`].files[0];return {slot,i,image:file?await resizeImage(file):null}}));
    for(const {slot,i,image} of prepared){
-    if(image){const id=slot.photo?.id||`${game.id}-${slot.key}`;await saveRecord('gameGallery',{id,gameId:game.id,slot:slot.key,image,caption:slot.caption,createdAt:slot.photo?.createdAt||new Date().toISOString()})}
+    if(image){const id=slot.photo?.id||`${game.id}-${slot.key}-${Date.now()}`;await saveRecord('gameGallery',{id,gameId:game.id,slot:slot.key,image,caption:slot.caption,createdAt:slot.photo?.createdAt||new Date().toISOString()})}
     else if(slot.photo&&form.elements[`remove${i}`]?.checked)await deleteRecord('gameGallery',slot.photo.id);
    }
    closeModal();render();toast('Fotos atualizadas.');
