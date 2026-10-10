@@ -135,3 +135,13 @@
 .admin-team-lineup-goalie b{color:var(--team-color);font-size:9px;letter-spacing:.04em}
 .admin-team-lineup-goalie strong{font-size:11px}
 @media(max-width:760px){.admin-team-round .admin-game-line{grid-template-columns:minmax(0,1fr) auto}.admin-team-round .admin-line-info{grid-column:1/-1}.admin-team-round .admin-agenda-actions{grid-column:2;grid-row:1}.admin-team-round-lineups{grid-template-columns:1fr}}
+
+.player-last-game-panel{margin:16px 0;border:2px solid #d3ab43;scroll-margin-top:16px}
+.player-last-game-panel h2{font-size:24px;margin:4px 0}
+.last-game-score{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;padding:16px 0}
+.last-game-score strong{font-size:36px;white-space:nowrap}
+.completed-event-gallery{margin-top:14px}
+.event-photo-button{display:block;width:100%;padding:0;border:0;background:transparent;cursor:zoom-in}
+.completed-event-gallery .event-photo-button img{width:100%;height:auto;max-height:none;object-fit:contain;display:block}
+.event-photo-expanded{width:100%;height:auto;display:block}
+@media(max-width:600px){.completed-event-gallery{grid-template-columns:1fr}.player-last-game-panel h2{font-size:21px}.last-game-score{gap:12px}.last-game-score strong{font-size:32px}}
