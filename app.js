@@ -87,7 +87,7 @@ let registrationsLoaded=false;
 let registrationsError=false;
 const signupRequestsInFlight=new Set();
 let signupRulesText='';
-fetch('./firestore.rules?v=20261010-health-history-v33').then(response=>response.ok?response.text():'').then(text=>signupRulesText=text).catch(()=>{});
+fetch('./firestore.rules?v=20261011-player-measurements-v34').then(response=>response.ok?response.text():'').then(text=>signupRulesText=text).catch(()=>{});
 const awardBallotSignatures = new Map();
 const selectedAwardCandidates = {};
 const awardVotesInFlight = new Set();
