@@ -368,3 +368,30 @@ export async function reserveAdminGameParticipation(game, player, position, join
     return { id: game.id, ...data };
   });
 }
+
+
+// Medições independentes: o histórico não é substituído pela sincronização do cadastro.
+export function listenToMeasurements(uid,onData,onError){
+ if(!cloudEnabled)return ()=>{};
+ const ref=firestore.collection(db,'playerMeasurements');
+ const query=uid?firestore.query(ref,firestore.where('uid','==',uid)):ref;
+ return firestore.onSnapshot(query,snapshot=>onData(snapshot.docs.map(doc=>({id:doc.id,...doc.data()}))),onError);
+}
+export async function saveMeasurement(measurement,recordId=''){
+ if(!cloudEnabled||!auth.currentUser)throw Error('Entre na sua conta para registrar a medição.');
+ const admin=(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(auth.currentUser.uid);
+ const ref=recordId?firestore.doc(db,'playerMeasurements',recordId):firestore.doc(firestore.collection(db,'playerMeasurements'));
+ await firestore.runTransaction(db,async transaction=>{
+  const existing=await transaction.get(ref);
+  if(recordId&&!existing.exists())throw Error('Registro não encontrado.');
+  if(existing.exists()){
+   const old=existing.data();
+   if(!admin&&(old.uid!==auth.currentUser.uid||!old.createdAt?.toMillis||Date.now()>=old.createdAt.toMillis()+86400000))throw Error('As 24 horas de edição terminaram. Faça um novo lançamento.');
+   transaction.update(ref,{weightKg:measurement.weightKg,heightM:measurement.heightM,updatedAt:firestore.serverTimestamp()});
+  }else{
+   const profile=await transaction.get(firestore.doc(db,'playerData',auth.currentUser.uid));
+   if(!profile.exists()||profile.data().approved!==true||!profile.data().playerId)throw Error('Seu cadastro ainda não está vinculado a um participante.');
+   transaction.set(ref,{uid:auth.currentUser.uid,playerId:profile.data().playerId,date:measurement.date,weightKg:measurement.weightKg,heightM:measurement.heightM,createdAt:firestore.serverTimestamp(),updatedAt:firestore.serverTimestamp()});
+  }
+ });return ref.id;
+}

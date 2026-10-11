@@ -172,6 +172,34 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Histórico privado e durável; somente peso/altura podem mudar nas primeiras 24 horas.
+    match /playerMeasurements/{measurementId} {
+      function ownApprovedPlayer(data) {
+        let profile = get(/databases/$(database)/documents/playerData/$(request.auth.uid)).data;
+        return request.auth != null && profile.approved == true
+          && data.uid == request.auth.uid && data.playerId == profile.playerId;
+      }
+      function validMeasurement(data) {
+        return data.keys().hasAll(['uid', 'playerId', 'date', 'weightKg', 'heightM', 'createdAt', 'updatedAt'])
+          && data.keys().hasOnly(['uid', 'playerId', 'date', 'weightKg', 'heightM', 'createdAt', 'updatedAt'])
+          && data.uid is string && data.playerId is string
+          && data.date is string && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && data.weightKg is number && data.weightKg > 0 && data.weightKg <= 500
+          && data.heightM is number && data.heightM > 0 && data.heightM <= 3
+          && data.createdAt is timestamp && data.updatedAt == request.time;
+      }
+      allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow create: if validMeasurement(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && (isAdmin() || ownApprovedPlayer(request.resource.data));
+      allow update: if validMeasurement(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weightKg', 'heightM', 'updatedAt'])
+        && (isAdmin() || (ownApprovedPlayer(resource.data)
+          && request.time >= resource.data.createdAt
+          && request.time < resource.data.createdAt + duration.value(24, 'h')));
+      allow delete: if false;
+    }
+
     match /playerAccessRequests/{uid} {
       allow create: if isAdmin() || (request.auth != null
         && request.auth.uid == uid
@@ -241,3 +269,4 @@ service cloud.firestore {
     }
   }
 }
+
