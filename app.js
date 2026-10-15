@@ -671,6 +671,7 @@ function confirmedRosterGame(game){
  return {...game,roster,teams,goalkeepers:keepers.map(entry=>entry.name)};
 }
 function applyGameRegistrations(){
+ if(rosterImportBusy)return;
  if(!appDataLoaded||!registrationsLoaded||currentUser?.role!=='admin')return;
  let changed=false;
  for(const game of state.games.filter(usesFirstConfirmation)){
