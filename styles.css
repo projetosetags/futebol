@@ -145,3 +145,4 @@
 .completed-event-gallery .event-photo-button img{width:100%;height:auto;max-height:none;object-fit:contain;display:block}
 .event-photo-expanded{width:100%;height:auto;display:block}
 @media(max-width:600px){.completed-event-gallery{grid-template-columns:1fr}.player-last-game-panel h2{font-size:21px}.last-game-score{gap:12px}.last-game-score strong{font-size:32px}}
+.notice-message{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal}
