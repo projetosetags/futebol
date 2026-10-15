@@ -1,3 +1,4 @@
+import { planRosterImport } from './roster-import.js?v=20261015-list-import-v1';
 import { firebaseConfig } from './firebase-config.js';
 
 const configured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
@@ -394,4 +395,15 @@ export async function saveMeasurement(measurement,recordId=''){
    transaction.set(ref,{uid:auth.currentUser.uid,playerId:profile.data().playerId,date:measurement.date,weightKg:measurement.weightKg,heightM:measurement.heightM,createdAt:firestore.serverTimestamp(),updatedAt:firestore.serverTimestamp()});
   }
  });return ref.id;
+}
+
+export async function applyRosterImport(pack){
+ if(!cloudEnabled||!auth.currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(auth.currentUser.uid))throw Error('Entre com a conta administrativa para importar a lista.');
+ const appRef=firestore.doc(db,'appData','current');
+ return firestore.runTransaction(db,async transaction=>{
+  const appSnapshot=await transaction.get(appRef);if(!appSnapshot.exists())throw Error('O cadastro do app não foi encontrado.');
+  const games=(appSnapshot.data().games||[]).filter(game=>game.date===pack.date);if(games.length!==1)throw Error('Jogo não encontrado ou data duplicada.');
+  const regRef=firestore.doc(db,'gameRegistrations',games[0].id),regSnapshot=await transaction.get(regRef),result=planRosterImport(appSnapshot.data(),regSnapshot.exists()?regSnapshot.data():null,pack,firestore.serverTimestamp());
+  if(!result.alreadyApplied){transaction.set(appRef,result.data);transaction.set(regRef,result.registration)}return result;
+ });
 }
