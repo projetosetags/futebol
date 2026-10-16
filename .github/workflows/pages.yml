@@ -9,6 +9,9 @@ on:
       - 'firebase.js'
       - 'firebase-config.js'
       - 'styles.css'
+      - 'futsal/**'
+      - 'icons/**'
+      - 'firestore.rules'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
