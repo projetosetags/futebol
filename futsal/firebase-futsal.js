@@ -368,7 +368,7 @@ export async function saveMeasurement(measurement,recordId=''){
 }
 
 export async function applyRosterImport(pack){
- if(!cloudEnabled||!auth.currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(auth.currentUser.uid))throw Error('Entre com a conta administrativa para importar a lista.');
+ if(!cloudEnabled||!auth.currentUser||!((firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(auth.currentUser.uid)||(firebaseConfig.adminEmails||[]).some(email=>email.toLowerCase()===String(auth.currentUser.email||'').toLowerCase())))throw Error('Entre com a conta administrativa para importar a lista.');
  const appRef=firestore.doc(db,'futsalAppData','current');
  return firestore.runTransaction(db,async transaction=>{
   const appSnapshot=await transaction.get(appRef);if(!appSnapshot.exists())throw Error('O cadastro do app não foi encontrado.');
