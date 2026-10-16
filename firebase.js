@@ -79,8 +79,8 @@ export async function signInPlayer(identifier, phone) {
   const attempts = [];
   try {
     const aliasRef = firestore.doc(db, 'playerLoginAliases', await playerAliasId(alias, localDigits));
-    const aliasDoc = await firestore.getDoc(aliasRef);
-    if (aliasDoc.exists() && aliasDoc.data().email) attempts.push(aliasDoc.data().email);
+    const aliasDoc = await Promise.race([firestore.getDoc(aliasRef), new Promise(resolve => setTimeout(() => resolve(null), 2200))]);
+    if (aliasDoc?.exists() && aliasDoc.data().email) attempts.push(aliasDoc.data().email);
   } catch {
     // Older Firestore rules may not include the alias index yet; the original first-name login remains available.
   }
