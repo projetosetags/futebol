@@ -1,4 +1,4 @@
-import { planRosterImport } from './roster-import.js?v=20261015-list-import-v1';
+import { planRosterImport } from './roster-import.js?v=20261016-presence-v2';
 import { firebaseConfig } from './firebase-config.js';
 import { app as sdk, firestore, auth as authSdk } from './firebase-sdk.bundle.js?v=20261016-local-v1';
 
