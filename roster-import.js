@@ -31,7 +31,7 @@ export function planRosterImport(source,registration,pack,stamp,nowMs=Date.now()
   (entry.keeper?reg.keeperSlots:reg.lineSlots)[player.id]=slot;
   let row=game.players.find(row=>row.playerId===player.id||key(row.name)===key(player.name));
   if(!row){const suggested=(game.suggestedPlayers||[]).find(row=>row.playerId===player.id);row={...suggested};game.players.push(row)}
-  Object.assign(row,{playerId:player.id,name:player.name,position:entry.keeper?'Goleiro':'Jogador',participationConfirmed:true,signupSequence:sequence,gameChargeConfirmed:!entry.keeper,attendance:'friday',importNote:entry.note||'',signupImportId:pack.id});
+  Object.assign(row,{playerId:player.id,name:player.name,position:entry.keeper?'Goleiro':'Jogador',participationConfirmed:true,signupSequence:sequence,gameChargeConfirmed:!entry.keeper,attendance:'friday',present:true,importNote:entry.note||'',signupImportId:pack.id});
   // A lista confirma os pagamentos assinalados; uma quitação já existente nunca é desfeita.
   if(entry.keeper){row.paid=false;row.paidAt=''}else if(entry.paid){row.paid=true;row.paidAt=row.paidAt||iso}else{row.paid=!!row.paid}
   game.playerChoiceOverrides||={};game.playerChoiceOverrides[player.id]={...(game.playerChoiceOverrides[player.id]||{}),joined:iso,attendance:iso};resolved.push({player,entry});
