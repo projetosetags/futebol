@@ -330,7 +330,16 @@ service cloud.firestore {
       allow delete: if isFutsalAdmin();
     }
     // O cadastro e os nomes de acesso continuam compartilhados entre os dois esportes.
-    match /playerData/{uid} { allow read, write: if isFutsalAdmin(); }
+    match /playerData/{uid} {
+      allow read: if isFutsalAdmin();
+      allow create: if isFutsalAdmin();
+      allow update: if isFutsalAdmin() || (request.auth != null && request.auth.uid == uid
+        && resource.data.approved == true
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['futsalAttendanceChoices'])
+        && request.resource.data.futsalAttendanceChoices is map
+        && request.resource.data.futsalAttendanceChoices.keys().size() <= 30);
+      allow delete: if isFutsalAdmin();
+    }
     match /playerAccessRequests/{uid} { allow read, write: if isFutsalAdmin(); }
     match /playerLoginAliases/{id} { allow read, write: if isFutsalAdmin(); }
     match /{document=**} {
