@@ -1,5 +1,5 @@
 import { publishedOctoberNinePhotos } from './event-0910-photos.js?v=20261010-last-game-v25';
-import { cloudEnabled, applyRosterImport, listenToMeasurements, saveMeasurement, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, reserveGameParticipation, reserveAdminGameParticipation, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261016-presence-v2';
+import { cloudEnabled, applyRosterImport, listenToMeasurements, saveMeasurement, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, reserveGameParticipation, reserveAdminGameParticipation, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261016-player-login-timeout-v1';
 import { firebaseConfig } from './firebase-config.js';
 
 const KEY = 'society-gramado-v1';
