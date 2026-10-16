@@ -302,10 +302,11 @@ service cloud.firestore {
           && game().registrationMode == 'first-confirmed-v1' && game().status != 'played' && game().status != 'cancel'
           && request.time.toMillis() <= game().signupClosesAtMs;
       }
-      function ownSlot(slot, id, oldSlot) {
+      function ownSlot(slot, id, oldSlot, keeper) {
         return slot == null || slot == oldSlot || (slot.keys().hasOnly(['uid','playerId','name','sequence','joinedAt'])
           && slot.uid == request.auth.uid && slot.playerId == profile().playerId && slot.name == profile().name
-          && slot.sequence is int && slot.joinedAt == request.time);
+          && slot.sequence is int && slot.joinedAt == request.time
+          && (keeper ? profile().gamePositions.get(gameId, 'Jogador') == 'Goleiro' : profile().gamePositions.get(gameId, 'Jogador') != 'Goleiro'));
       }
       function slotsChange(data, oldLine, oldKeeper, oldSequence) {
         let id = profile().playerId;
@@ -319,8 +320,8 @@ service cloud.firestore {
           && !(id in data.lineSlots && id in data.keeperSlots)
           && data.nextSequence is int && data.nextSequence >= oldSequence && data.nextSequence <= oldSequence + 1
           && data.updatedAt == request.time
-          && (!(id in data.lineSlots) || ownSlot(data.lineSlots[id], id, oldLine.get(id, null)))
-          && (!(id in data.keeperSlots) || ownSlot(data.keeperSlots[id], id, oldKeeper.get(id, null)));
+          && (!(id in data.lineSlots) || ownSlot(data.lineSlots[id], id, oldLine.get(id, null), false))
+          && (!(id in data.keeperSlots) || ownSlot(data.keeperSlots[id], id, oldKeeper.get(id, null), true));
       }
       allow read: if request.auth != null;
       allow create: if isFutsalAdmin() || (openGame() && slotsChange(request.resource.data, {}, {}, 0));
