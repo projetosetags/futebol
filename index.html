@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Futebol Liderança" />
   <title>Futebol Liderança · Gestão</title>
-  <link rel="manifest" href="./manifest-lideranca.webmanifest" />
+  <link rel="manifest" href="./manifest-lideranca.webmanifest?v=20261016-pwa-v1" />
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/futebol-lideranca-192.png?v=20261007-icon-png-fix2" />
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/futebol-lideranca-180.png?v=20261007-icon-png-fix2" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,6 +40,6 @@
   </script>
   <script type="module" src="app.js?v=20261016-app-syntaxfix-v1"></script>
   <script type="module" src="craques.js?v=20261007-two-teams-v2"></script>
-  <script>if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));</script>
+  <script>if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=20261016-sw-v48',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}));</script>
 </body>
 </html>
