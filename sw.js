@@ -4,6 +4,7 @@ const SHELL = [
   "./",
   "./index.html",
   "./jogador.html",
+  "./jogador.html?v=20261016-ios-auth-persistence-v1",
   "./styles.css",
   "./styles.css?v=20261016-boot-recovery-v1",
   "./app.js?v=20261016-ios-auth-persistence-v1",
