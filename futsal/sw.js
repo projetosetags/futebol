@@ -1,1 +1,29 @@
-const C='futsal-v2';const A=['./','./index.html','./jogador.html','./app.js?v=20261016-futsal-v2,'./firebase-futsal.js?v=20261016-futsal-v2,'./firebase-config-futsal.js','../styles.css','../firebase-sdk.bundle.js'];self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(a=>Promise.all(a.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.origin!==location.origin)return;e.respondWith(fetch(e.request).then(r=>{if(r.ok&&u.pathname.includes('/futsal/'))caches.open(C).then(c=>c.put(e.request,r.clone()));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match('./index.html')))))});
+const CACHE = 'futsal-v3';
+const ASSETS = [
+  './',
+  './index.html',
+  './jogador.html',
+  './app.js?v=20261016-futsal-v3',
+  './firebase-futsal.js?v=20261016-futsal-v3',
+  './firebase-config-futsal.js',
+  './manifest-admin.webmanifest?v=20261016-futsal-v3',
+  './manifest-player.webmanifest?v=20261016-futsal-v3',
+  '../styles.css?v=20261016-futsal-v3',
+  '../firebase-sdk.bundle.js?v=20261016-local-v1'
+];
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('futsal-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || !url.pathname.includes('/futsal/')) return;
+  event.respondWith(fetch(request).then(response => {
+    if (response.ok) caches.open(CACHE).then(cache => cache.put(request, response.clone()));
+    return response;
+  }).catch(() => caches.match(request).then(response => response || caches.match('./index.html'))));
+});
