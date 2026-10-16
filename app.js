@@ -1,5 +1,5 @@
 import { publishedOctoberNinePhotos } from './event-0910-photos.js?v=20261010-last-game-v25';
-import { cloudEnabled, applyRosterImport, listenToMeasurements, saveMeasurement, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, reserveGameParticipation, reserveAdminGameParticipation, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261016-ios-auth-persistence-v1';
+import { cloudEnabled, applyRosterImport, listenToMeasurements, saveMeasurement, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, reserveGameParticipation, reserveAdminGameParticipation, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261016-auto-active-ranieri-v1';
 import { firebaseConfig } from './firebase-config.js';
 function isAdminUser(user){return !!user&&((firebaseConfig.adminUids||[firebaseConfig.adminUid]).filter(Boolean).includes(user.uid)||(firebaseConfig.adminEmails||[]).some(email=>email.toLowerCase()===String(user.email||'').toLowerCase()))}
 
@@ -96,7 +96,7 @@ let registrationsLoaded=false;
 let registrationsError=false;
 const signupRequestsInFlight=new Set();
 let signupRulesText='';
-fetch('./firestore.rules?v=20261015-list-import-v36').then(response=>response.ok?response.text():'').then(text=>signupRulesText=text).catch(()=>{});
+fetch('./firestore.rules?v=20261016-admin-removal-v1').then(response=>response.ok?response.text():'').then(text=>signupRulesText=text).catch(()=>{});
 const awardBallotSignatures = new Map();
 const selectedAwardCandidates = {};
 const awardVotesInFlight = new Set();
