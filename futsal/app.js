@@ -1,5 +1,5 @@
 const publishedOctoberNinePhotos=[];
-import { cloudEnabled, applyRosterImport, listenToMeasurements, saveMeasurement, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, reserveGameParticipation, reserveAdminGameParticipation, signOutAdmin, playerAliasId, playerEmailFor } from './firebase-futsal.js?v=20261016-futsal-v1';
+import { cloudEnabled, applyRosterImport, listenToMeasurements, saveMeasurement, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, reserveGameParticipation, reserveAdminGameParticipation, signOutAdmin, playerAliasId, playerEmailFor } from './firebase-futsal.js?v=20261016-futsal-v2';
 import { firebaseConfig } from './firebase-config-futsal.js';
 function isAdminUser(user){return !!user&&String(user.email||'').toLowerCase()==='marcelo@futsal.com'}
 
