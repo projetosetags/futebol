@@ -1,14 +1,14 @@
-const CACHE = 'futsal-v3';
+const CACHE = 'futsal-v4';
 const ASSETS = [
   './',
   './index.html',
   './jogador.html',
-  './app.js?v=20261016-futsal-v3',
-  './firebase-futsal.js?v=20261016-futsal-v3',
+  './app.js?v=20261016-futsal-v4',
+  './firebase-futsal.js?v=20261016-futsal-v4',
   './firebase-config-futsal.js',
-  './manifest-admin.webmanifest?v=20261016-futsal-v3',
-  './manifest-player.webmanifest?v=20261016-futsal-v3',
-  '../styles.css?v=20261016-futsal-v3',
+  './manifest-admin.webmanifest?v=20261016-futsal-v4',
+  './manifest-player.webmanifest?v=20261016-futsal-v4',
+  '../styles.css?v=20261016-futsal-v4',
   '../firebase-sdk.bundle.js?v=20261016-local-v1'
 ];
 self.addEventListener('install', event => {
