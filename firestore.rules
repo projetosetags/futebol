@@ -7,7 +7,8 @@ service cloud.firestore {
         && (request.auth.uid == 'RutTVgdXfjdGrFFnbaYmpOO2nJi1'
           || request.auth.uid == 'xptgdFErpMV5Ekxa3CRX2SBrdcy1'
           || request.auth.uid == 'jmJvH0W7uwdCMlUeyJSWnC4Hd103'
-          || request.auth.uid == '45AaXndEroRoLYEf1SDFMYBLXZw2');
+          || request.auth.uid == '45AaXndEroRoLYEf1SDFMYBLXZw2'
+          || request.auth.token.get('email', '') in ['esli@futebol.com', 'maicon@futebol.com', 'phdbr68@gmail.com']);
     }
     match /appData/current {
       allow read, write: if isAdmin();
