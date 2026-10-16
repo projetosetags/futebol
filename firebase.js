@@ -1,16 +1,12 @@
 import { planRosterImport } from './roster-import.js?v=20261015-list-import-v1';
 import { firebaseConfig } from './firebase-config.js';
+import { app as sdk, firestore, auth as authSdk } from './firebase-sdk.bundle.js?v=20261016-local-v1';
 
 const configured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
 let db = null;
-let firestore = null;
-let authSdk = null;
 let auth = null;
 let playerProvisioningAuth = null;
 if (configured) {
-  const sdk = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js');
-  firestore = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  authSdk = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
   const app = sdk.initializeApp(firebaseConfig);
   db = firestore.getFirestore(app);
   auth = authSdk.getAuth(app);
@@ -48,12 +44,10 @@ export async function playerAliasId(name, phone) {
 }
 async function getPlayerProvisioningAuth() {
   if (playerProvisioningAuth) return playerProvisioningAuth;
-  const appSdk = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js');
-  const authModule = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
   let app;
-  try { app = appSdk.getApp('society-player-provisioner'); }
-  catch { app = appSdk.initializeApp(firebaseConfig, 'society-player-provisioner'); }
-  playerProvisioningAuth = { auth: authModule.getAuth(app), authModule };
+  try { app = sdk.getApp('society-player-provisioner'); }
+  catch { app = sdk.initializeApp(firebaseConfig, 'society-player-provisioner'); }
+  playerProvisioningAuth = { auth: authSdk.getAuth(app), authModule: authSdk };
   return playerProvisioningAuth;
 }
 export async function provisionPlayerAccount(name, phone, emailOverride = '') {
