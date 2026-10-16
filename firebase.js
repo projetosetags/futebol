@@ -343,7 +343,7 @@ export async function reserveGameParticipation(gameId, joined) {
 }
 
 export async function reserveAdminGameParticipation(game, player, position, joined) {
-  if (!cloudEnabled || !auth.currentUser || !(firebaseConfig.adminUids || [firebaseConfig.adminUid]).includes(auth.currentUser.uid)) throw new Error('Entre com a conta administrativa.');
+  if (!cloudEnabled || !auth.currentUser || !((firebaseConfig.adminUids || [firebaseConfig.adminUid]).includes(auth.currentUser.uid) || (firebaseConfig.adminEmails || []).some(email => email.toLowerCase() === String(auth.currentUser.email || '').toLowerCase()))) throw new Error('Entre com a conta administrativa.');
   if (!player?.id) throw new Error('Participante sem vínculo no cadastro.');
   const ref = firestore.doc(db, 'gameRegistrations', game.id);
   return firestore.runTransaction(db, async transaction => {
