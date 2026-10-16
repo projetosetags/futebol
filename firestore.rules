@@ -169,6 +169,9 @@ service cloud.firestore {
       allow create: if isAdmin() || (openGame() && validSlots(request.resource.data, {}, {}, 0));
       allow update: if isAdmin() || (openGame()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lineSlots', 'keeperSlots', 'nextSequence', 'updatedAt'])
+        // Jogadores podem reservar vaga; só administradores podem removê-la.
+        && request.resource.data.lineSlots.diff(resource.data.lineSlots).removedKeys().size() == 0
+        && request.resource.data.keeperSlots.diff(resource.data.keeperSlots).removedKeys().size() == 0
         && validSlots(request.resource.data, resource.data.lineSlots, resource.data.keeperSlots, resource.data.nextSequence));
       allow delete: if isAdmin();
     }
