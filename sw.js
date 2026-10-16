@@ -1,4 +1,4 @@
-const CACHE_NAME = "futebol-shell-v47";
+const CACHE_NAME = "futebol-shell-v48";
 const SHELL = [
   "./roster-import.js?v=20261015-list-import-v1",
   "./",
@@ -12,8 +12,8 @@ const SHELL = [
   "./firebase.js?v=20261016-local-firebase-v1",
   "./firebase-config.js",
   "./firebase-sdk.bundle.js?v=20261016-local-v1",
-  "./manifest-lideranca.webmanifest",
-  "./manifest-jogador.webmanifest",
+  "./manifest-lideranca.webmanifest?v=20261016-pwa-v1",
+  "./manifest-jogador.webmanifest?v=20261016-pwa-v1",
   "./icons/futebol-lideranca-180.png?v=20261007-icon-png-fix2",
   "./icons/futebol-lideranca-192.png?v=20261007-icon-png-fix2",
   "./icons/futebol-lideranca-512.png?v=20261007-icon-png-fix2",
@@ -22,7 +22,14 @@ const SHELL = [
   "./icons/futebol-jogador-512.png?v=20261007-icon-png-fix2"
 ];
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.allSettled(SHELL.map(async path => {
+      const url = new URL(path, self.registration.scope);
+      const response = await fetch(new Request(url, { cache: "reload" }));
+      if (response.ok) await cache.put(url, response);
+    }));
+  })());
   self.skipWaiting();
 });
 self.addEventListener("activate", event => {
