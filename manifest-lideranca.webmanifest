@@ -2,7 +2,7 @@
   "name": "Futebol Liderança",
   "short_name": "Futebol Liderança",
   "description": "Acesso de administração do Futebol Society Gramado.",
-  "start_url": "./",
+  "start_url": "./?app=20261016-ready-v1",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
