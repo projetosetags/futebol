@@ -9,7 +9,7 @@ let playerProvisioningAuth = null;
 if (configured) {
   const app = sdk.initializeApp(firebaseConfig);
   db = firestore.getFirestore(app);
-  auth = authSdk.getAuth(app);
+  auth = authSdk.initializeAuth(app, { persistence: [authSdk.browserLocalPersistence, authSdk.browserSessionPersistence, authSdk.inMemoryPersistence] });
 }
 export const cloudEnabled = configured;
 export function watchAuthState(onUser, onError) {
