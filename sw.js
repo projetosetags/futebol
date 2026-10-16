@@ -1,16 +1,16 @@
-const CACHE_NAME = "futebol-shell-v64";
+const CACHE_NAME = "futebol-shell-v65";
 const SHELL = [
   "./roster-import.js?v=20261016-presence-v2",
   "./",
   "./index.html",
   "./jogador.html",
-  "./jogador.html?v=20261016-auto-active-ranieri-v1",
+  "./jogador.html?v=20261016-auto-active-ranieri-v2",
   "./styles.css",
   "./styles.css?v=20261016-boot-recovery-v1",
-  "./app.js?v=20261016-auto-active-ranieri-v1",
+  "./app.js?v=20261016-auto-active-ranieri-v2",
   "./event-0910-photos.js?v=20261015-scroll-v1",
   "./firebase.js",
-  "./firebase.js?v=20261016-auto-active-ranieri-v1",
+  "./firebase.js?v=20261016-auto-active-ranieri-v2",
   "./firebase-config.js",
   "./firebase-sdk.bundle.js?v=20261016-local-v1",
   "./manifest-lideranca.webmanifest?v=20261016-pwa-v1",
