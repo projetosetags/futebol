@@ -1,3 +1,634 @@
+import { publishedOctoberNinePhotos } from './event-0910-photos.js?v=20261010-last-game-v25';
+import { cloudEnabled, applyRosterImport, listenToMeasurements, saveMeasurement, listenToAppData, saveAppData, listenToRecords, listenToMyPollVotes, submitPollVote, saveRecord, getRecord, deleteRecord, watchAuthState, signInAdmin, signInPlayer, registerPlayer, provisionPlayerAccount, updateMyPlayerProfile, listenToPlayerData, savePlayerData, savePlayerAttendance, reserveGameParticipation, reserveAdminGameParticipation, signOutAdmin, playerAliasId, playerEmailFor } from './firebase.js?v=20261015-list-import-v12';
+import { firebaseConfig } from './firebase-config.js';
+
+const KEY = 'society-gramado-v1';
+const defaultFields = [
+ {id:'field-sao-joao',name:'Campo São João Futebol Clube',address:'',maps:'https://www.google.com/maps?q=-28.479385375976562,-49.04423522949219&z=17&hl=pt-BR',waze:'https://waze.com/ul?ll=-28.479385375976562,-49.04423522949219&navigate=yes',notes:''},
+ {id:'field-arena-andrino',name:'Arena Andrino',address:'',maps:'https://www.google.com/maps?q=-28.4926334,-48.9989524&z=17&hl=pt-BR',waze:'https://waze.com/ul?ll=-28.4926334,-48.9989524&navigate=yes',notes:''}
+];
+const defaultTeams = [
+ {name:'Time 01',goalkeeper:'Luciano',players:['Esli','Murilo','Luan','Lucas Venancio','Marcelo','Jheison','Pablo']},
+ {name:'Time 02',goalkeeper:'Caio',players:['Maicon','Edson','Patrick','Eduardo','Lucas','Neto','Ramon']}
+];
+const previousDefaultTeams = [
+ {name:'Time 01',goalkeeper:'Luciano',players:['Esli','Murilo','Luan','Lucas Venancio','Marcelo','Jheison']},
+ {name:'Time 02',goalkeeper:'Caio',players:['Maicon','Edson','Patrick','Eduardo','Lucas','Neto']}
+];
+const legacyDefaultTeams = [
+ {name:'Time 01',goalkeeper:'Luciano',players:['Esli','Murilo','Luan','Lucas Venancio','Marcelo','Jheison','Pablo']},
+ {name:'Time 02',goalkeeper:'Caio',players:['Maicon','Edson','Patrick','Eduardo','Lucas','Neto','Ramon']}
+];
+const defaultPlayers = [
+ ['Maicon','','p-maicon',''],['Edson','','p-edson',''],['Murilo','','p-murilo','+55 48 92002-9714'],['Patrick','','p-patrick','999301995'],
+ ['Rodrigo','','p-rodrigo','+55 45 99920-0504'],['Esli','','p-esli',''],['Ramon','','p-ramon','+55 48 99170-5717'],['Luan','','p-luan','+55 48 99976-8979'],
+ ['Eduardo','','p-eduardo','+55 48 99134-3654'],['Pablo Henrique','Pablo','p-pablo-henrique',''],['Marcelo','','p-marcelo',''],
+ ['Lucas','','p-lucas',''],['Manoel Fernandes Neto','Neto','p-neto','+55 69 98431-1978'],['Jheison','Jheisson','p-jheison','+55 48 99974-6972'],['Lucas Venancio','Venancio','p-venancio','+55 48 99649-2663'],
+ ['Rodrigo (amigo Ramon)','Amigo do Ramon','p-rodrigo-amigo-ramon',''],['Caio','','p-caio','+55 48 99653-5580'],['Luciano','','p-luciano',''],
+ ['Diego','','p-diego',''],['Samuel','','p-samuel',''],['Markson','','p-markson','+55 48 99120-4352'],['Nicolas','','p-nicolas',''],
+ ['Geison','','p-geison','+55 48 99105-5457'],['Luiz','','p-luiz',''],['Ramon Matador','','p-ramon-matador',''],['Emanuel','','p-emanuel',''],
+ ['Ramon Scheper','','p-ramon-scheper','+55 48 99942-1271'],['Ramon Martins','','p-ramon-martins','+55 48 99965-3888'],
+ ['Lenam','','p-lenam','+55 48 99968-3529'],['Deus é bom o tempo todo.','','p-deus-e-bom','+55 48 99974-3748'],
+ ['Adson Fratoni - Tintas','','p-adson-fratoni',''],['Contato sem nome','','p-contato-991751732','+55 48 99175-1732']
+].map(([name,nickname,id,phone])=>({id,name,nickname,phone,active:true}));
+const previousTeamSuggestion = [
+ {name:'Time 01',goalkeeper:'Ramon',players:['Maicon','Edson','Ramon M','Markson','Caio','Diego','Nicolas','Pablo']},
+ {name:'Time 02',goalkeeper:'Luciano',players:['Luan','Murilo','Jheisson','Ramon D','Neto','Eduardo','Emanuel','Geison']}
+];
+const scheduleTemplates = [
+ ['2026-10-09','2026-10-10'],['2026-10-16','2026-10-17'],['2026-10-23','2026-10-24'],['2026-10-30','2026-10-31'],
+ ['2026-11-06','2026-11-07'],['2026-11-13','2026-11-14'],['2026-11-20','2026-11-21'],['2026-11-27','2026-11-28']
+].map(([date,rainDate])=>({id:`weekly-${date}`,date,time:'19:30',fieldId:'field-sao-joao',fee:20,foodFee:7,foodName:'Churrasco',durationMinutes:60,matchIntervalMinutes:8,players:[],teams:structuredClone(defaultTeams),maps:'',status:'open',rainDate,rainTime:'14:30',rainFieldId:'field-arena-andrino',scheduleTemplate:true}));
+const octoberNineRoster=['Maicon','Esli','Ramon','Patrick','Manoel Fernandes Neto','Eduardo','Jheison','Diego','Marcelo','Pablo Henrique','Luan','Geison'];
+const octoberNineTeamNames=[['Esli','Diego','Jheison','Marcelo','Pablo Henrique','Luan'],['Maicon','Ramon','Patrick','Manoel Fernandes Neto','Eduardo']];
+const initial = { fields:structuredClone(defaultFields), players:structuredClone(defaultPlayers), games:structuredClone(scheduleTemplates), payments:[], pix:'48991914372', gameFee:20, foodFee:7 };
+let state = cloudEnabled ? structuredClone(initial) : load();
+let currentUser = null;
+let pendingRosterImport=null,rosterImportError='',rosterImportBusy=false,rosterImportResult=null;
+try{const encoded=new URLSearchParams(location.hash.slice(1)).get('lista');if(encoded&&encoded.length<24000){pendingRosterImport=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))))}}catch{rosterImportError='O link de importação está incompleto.'}
+function rosterImportPanel(){if(!pendingRosterImport&&!rosterImportResult&&!rosterImportError)return '';const result=rosterImportResult;return `<section class="panel" style="margin-bottom:16px"><h3>Importação da lista</h3>${result?`<p><b>Lista gravada no Firebase ✓</b> · ${result.count} participantes · ${result.paidCount} pagamentos confirmados na lista (${brl(result.paidAmount)}).</p>`:`<p>Lista recebida para ${esc(pendingRosterImport?.date||'')} · ${esc(pendingRosterImport?.time||'')}. ${rosterImportBusy?'Gravando participantes e pagamentos…':'Aguardando sincronização do painel.'}</p>`}${rosterImportError?`<p role="alert">${esc(rosterImportError)}</p><button class="btn" data-action="retry-list-import">Tentar importação novamente</button>`:''}</section>`}
+async function processRosterImport(){
+ if(!pendingRosterImport||rosterImportBusy||rosterImportResult||rosterImportError||currentUser?.role!=='admin'||!appDataLoaded||!registrationsLoaded||pendingAppSaves>0)return;
+ rosterImportBusy=true;pendingAppSaves++;render();
+ try{await appSavePromise.catch(()=>{});const result=await applyRosterImport(pendingRosterImport);state=normalizeState(result.data);if(result.registration)gameRegistrations=[...gameRegistrations.filter(row=>row.id!==result.gameId),{id:result.gameId,...result.registration}];rememberRosterChoices();localStorage.setItem(KEY,JSON.stringify(state));rosterImportResult=result.summary;page='dashboard';syncPlayerSnapshots();syncGameRosters();syncGameAwardBallots();syncPlayerLoginAliases();toast(result.alreadyApplied?'Esta lista já estava gravada.':'Lista e pagamentos gravados.');history.replaceState(null,'',location.pathname+location.search)}catch(error){rosterImportError=error.message||'Não foi possível importar a lista.'}finally{pendingAppSaves--;rosterImportBusy=false;render()}
+}
+let measurements=[],measurementsError=false,stopMeasurementsListener=null;
+let stopDataListener = null;
+let authMessage = '';
+let page = 'dashboard';
+let searchTerm = '';
+let rosterGame = null;
+let notices = loadRecords('notices');
+let polls = loadRecords('polls');
+let pollTallies = [];
+let myPollVotes = [];
+const pollVotesInFlight = new Set();
+let stopNoticeListener = null;
+let stopPollListener = null;
+let stopPollTalliesListener = null;
+let stopMyPollVotesListener = null;
+let stopRequestListener = null;
+let stopPlayerDataListener = null;
+let stopPlayerAccountsListener = null;
+let stopAliasListener = null;
+let stopAwardBallotListener = null;
+let stopAwardVoteListener = null;
+let stopGalleryListener = null;
+let stopGameRosterListener = null;
+let accessRequests = [];
+let currentPlayerData = null;
+let playerAccounts = [];
+let playerAccountsLoaded = false;
+let playerBatchReport = '';
+let accessRequestsLoaded = false;
+let appDataLoaded = false;
+const autoApprovalInFlight = new Set();
+let loginAliases = [];
+let loginAliasesLoaded = false;
+let awardBallots = [];
+let awardVotes = [];
+let gameGallery = [];
+let sharedGameRosters = [];
+let gameRegistrations=[];
+let stopRegistrationListener=null;
+let registrationsLoaded=false;
+let registrationsError=false;
+const signupRequestsInFlight=new Set();
+let signupRulesText='';
+fetch('./firestore.rules?v=20261015-list-import-v36').then(response=>response.ok?response.text():'').then(text=>signupRulesText=text).catch(()=>{});
+const awardBallotSignatures = new Map();
+const selectedAwardCandidates = {};
+const awardVotesInFlight = new Set();
+let loginAliasSyncPromise = Promise.resolve();
+let playerSyncPromise = Promise.resolve();
+const playerPortalOnly = location.pathname.toLocaleLowerCase('pt-BR').endsWith('/jogador.html') || new URLSearchParams(location.search).get('area') === 'jogador';
+let pendingPlayerIdentity = null;
+const expiredNoticeDeletes = new Set();
+function loadRecords(name){try{return JSON.parse(localStorage.getItem(`society-gramado-${name}-v1`))||[]}catch{return []}}
+function persistRecords(name,records){localStorage.setItem(`society-gramado-${name}-v1`,JSON.stringify(records))}
+function deduplicateGamePlayers(game){const unique=[];for(const entry of game.players||[]){const key=playerKey(entry.name),existing=unique.find(item=>(entry.playerId&&item.playerId===entry.playerId)||playerKey(item.name)===key);if(!existing){unique.push(entry);continue}const wasPaid=!!existing.paid;existing.paid=!!(existing.paid||entry.paid);existing.foodWanted=!!(existing.foodWanted||entry.foodWanted);existing.foodPaid=!!(existing.foodPaid||entry.foodPaid);existing.present=!!(existing.present||entry.present);existing.receipt=existing.receipt||entry.receipt||'';existing.paidAt=wasPaid?(existing.paidAt||entry.paidAt||''):(entry.paid?entry.paidAt||existing.paidAt||'':existing.paidAt||'');existing.foodPaidAt=existing.foodPaidAt||entry.foodPaidAt||'';if(entry.position==='Goleiro')existing.position='Goleiro';existing.playerId=existing.playerId||entry.playerId;existing.attendance=existing.attendance||entry.attendance||'friday'}game.players=unique;for(const team of game.teams||[]){if(Array.isArray(team.playerIds))team.playerIds=[...new Set(team.playerIds)];if(Array.isArray(team.players))team.players=[...new Set(team.players)]}}
+function isFieldPlayer(entry){return !!entry&&entry.participationConfirmed!==false&&entry.position!=='Goleiro'&&entry.position!=='Churrasco'}
+function lastWeekendOfMonth(date){if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return false;const d=new Date(date+'T12:00:00Z'),day=d.getUTCDay();d.setUTCDate(d.getUTCDate()+((6-day+7)%7));const next=new Date(d);next.setUTCDate(next.getUTCDate()+7);return d.getUTCMonth()!==next.getUTCMonth()}
+function configureGameFood(game,defaultFee=7){if(!game||game.date<today)return;game.foodMode||='monthly';game.configuredFoodFee??=Number(game.foodFee)>0?Number(game.foodFee):Number(defaultFee);game.foodEnabled=game.foodMode==='on'||(game.foodMode==='monthly'&&lastWeekendOfMonth(game.date));game.foodFee=game.foodEnabled?Number(game.configuredFoodFee||0):0}
+function normalizeState(data={}){
+ const copyNamesToNicknames=data.nicknameMigrationVersion!==1;
+ const normalized={...structuredClone(initial),...data};
+ normalized.pix=String(normalized.pix||initial.pix).replace(/\D/g,'');
+ normalized.gameFee=Number.isFinite(Number(normalized.gameFee))?Number(normalized.gameFee):initial.gameFee;
+ normalized.foodFee=Number.isFinite(Number(normalized.foodFee))?Number(normalized.foodFee):initial.foodFee;
+ normalized.fields=Array.isArray(data.fields)?data.fields.slice():[];
+ for(const preset of defaultFields){
+  const existing=normalized.fields.find(f=>f.name?.trim().toLocaleLowerCase('pt-BR')===preset.name.toLocaleLowerCase('pt-BR'));
+  if(!existing){
+   normalized.fields.push({...preset,id:normalized.fields.some(f=>f.id===preset.id)?`${preset.id}-default`:preset.id});
+  }else{
+   existing.maps||=preset.maps;existing.waze||=preset.waze;
+  }
+ }
+ normalized.players=Array.isArray(data.players)?data.players.slice():[];
+ for(const preset of defaultPlayers){const keys=[preset.name,preset.nickname].filter(Boolean).map(playerKey);let existing=normalized.players.find(p=>[p.name,p.nickname,...(p.aliases||[])].filter(Boolean).map(playerKey).some(k=>keys.includes(k)));if(!existing){let id=preset.id,n=1;while(normalized.players.some(p=>p.id===id))id=`${preset.id}-${n++}`;normalized.players.push({...preset,id})}else{if(existing.id==='p-venancio'&&playerKey(existing.name)==='venancio'){existing.aliases=[...new Set([...(existing.aliases||[]),'Venancio'])];existing.name=preset.name;}if(existing.id==='p-neto'&&preset.id==='p-neto'&&playerKey(existing.name)==='neto'){existing.aliases=[...new Set([...(existing.aliases||[]),'Neto'])];existing.name=preset.name;}if(!existing.nickname&&preset.nickname)existing.nickname=preset.nickname;existing.phone=existing.phone||preset.phone||'';existing.active??=true}}
+ if(copyNamesToNicknames)for(const player of normalized.players){if(player.nickname&&playerKey(player.nickname)!==playerKey(player.name))player.aliases=[...new Set([...(player.aliases||[]),player.nickname])];player.nickname=player.name}
+ normalized.nicknameMigrationVersion=1;
+ normalized.playerIdentityMigrationVersion=1;
+ normalized.playerPhoneMigrationVersion=1;
+ normalized.games=Array.isArray(data.games)?data.games.slice():[];
+ for(const template of scheduleTemplates){
+  let existing=normalized.games.find(g=>g.date===template.date);
+  if(!existing){existing={...structuredClone(template),fee:normalized.gameFee,foodFee:normalized.foodFee};normalized.games.push(existing)}
+  else if(existing.scheduleTemplate!==false){
+   Object.assign(existing,{time:template.time,fieldId:template.fieldId,rainDate:template.rainDate,rainTime:template.rainTime,rainFieldId:template.rainFieldId,scheduleTemplate:true});
+   existing.fee??=normalized.gameFee;existing.foodFee??=normalized.foodFee;existing.foodName||='Churrasco';existing.players||=[];existing.teams||=structuredClone(defaultTeams);
+  }else{
+   existing.rainDate??=template.rainDate;
+   existing.rainTime??=template.rainTime;
+   existing.rainFieldId??=template.rainFieldId;
+   existing.teams||=structuredClone(defaultTeams);
+  }
+ }
+ const teamSignature=teams=>(teams||[]).map(team=>({name:team.name,goalkeeper:team.goalkeeper||'',players:Array.isArray(team.playerIds)?team.playerIds.map(id=>normalized.players.find(p=>p.id===id)?.name).filter(Boolean):team.players||[]}));
+ for(const game of normalized.games){
+  game.players||=[];game.durationMinutes??=60;game.matchIntervalMinutes??=8;
+  for(const entry of game.players){const participant=normalized.players.find(p=>entry.playerId===p.id||[p.name,p.nickname,...(p.aliases||[])].some(name=>playerKey(name)===playerKey(entry.name)));if(participant)entry.playerId??=participant.id}
+  const signature=JSON.stringify(teamSignature(game.teams));
+  const oldStandard=JSON.stringify(previousDefaultTeams);
+  const oldLegacy=JSON.stringify(legacyDefaultTeams);
+  const oldSuggestion=JSON.stringify(previousTeamSuggestion);
+  if(!game.teamsEdited&&(signature===oldStandard||signature===oldLegacy||signature===oldSuggestion))game.teams=structuredClone(defaultTeams);
+  game.teams||=structuredClone(defaultTeams);
+  const fieldPlayers=game.players.filter(isFieldPlayer).length;
+  game.teams=game.teams.slice(0,2);
+ }
+ if(Number(data.octoberNineRosterVersion||0)<1){
+  const game=normalized.games.find(g=>g.date==='2026-10-09');
+  if(game){
+   const findPlayer=name=>normalized.players.find(p=>[p.name,p.nickname,...(p.aliases||[])].filter(Boolean).some(alias=>playerKey(alias)===playerKey(name)));
+   const previous=game.players||[];
+   game.players=octoberNineRoster.map(name=>{const player=findPlayer(name),old=previous.find(entry=>entry.playerId===player?.id||playerKey(entry.name)===playerKey(name));return {...old,playerId:player?.id||old?.playerId||'',name:player?.name||name,position:'Jogador',paid:!!old?.paid,foodWanted:true,foodPaid:!!old?.foodPaid,attendance:old?.attendance||'friday'}});
+   game.fee=20;game.foodFee=7;game.foodName='Churrasco';game.status=game.status||'open';
+   game.teams=octoberNineTeamNames.map((names,index)=>{const players=names.map(findPlayer).filter(Boolean);return {name:`TIME 0${index+1}`,goalkeeper:'',playerIds:players.map(player=>player.id),players:players.map(player=>player.name)}});
+   game.teamsEdited=true;
+  }
+  normalized.octoberNineRosterVersion=1;
+ }
+ if(Number(data.octoberNineRosterVersion||0)<2){
+  const game=normalized.games.find(g=>g.date==='2026-10-09');
+  if(game){const findPlayer=name=>normalized.players.find(p=>[p.name,p.nickname,...(p.aliases||[])].filter(Boolean).some(alias=>playerKey(alias)===playerKey(name)));for(const name of octoberNineRoster){if((game.players||[]).some(entry=>playerKey(entry.name)===playerKey(name)))continue;const player=findPlayer(name);game.players.push({playerId:player?.id||'',name:player?.name||name,position:'Jogador',paid:false,foodWanted:false,foodPaid:false,attendance:'friday'})}}
+  normalized.octoberNineRosterVersion=2;
+ }
+ if(Number(data.octoberNineRosterVersion||0)<3){
+  const game=normalized.games.find(g=>g.date==='2026-10-09'),geison=normalized.players.find(p=>playerKey(p.name)==='geison');
+  if(game&&geison){const teams=(game.teams||[]).slice(0,2);const already=teams.some(team=>[...(team.playerIds||[]),...(team.players||[])].some(value=>playerKey(normalized.players.find(p=>p.id===value)?.name||value)===playerKey(geison.name)));if(!already&&teams.length){const count=team=>Math.max((team.playerIds||[]).length,(team.players||[]).length);const target=teams.slice().sort((a,b)=>count(a)-count(b))[0];target.playerIds||=[];target.players||=[];if(!target.playerIds.includes(geison.id))target.playerIds.push(geison.id);if(!target.players.some(name=>playerKey(name)===playerKey(geison.name)))target.players.push(geison.name);game.teamsEdited=true}}
+  normalized.octoberNineRosterVersion=3;
+ }
+ if(Number(data.muriloOct9RosterVersion||0)<2){
+  const game=normalized.games.find(item=>item.date==='2026-10-09');
+  const murilo=normalized.players.find(player=>playerKey(player.name)==='murilo')||normalized.players.find(player=>playerKey(player.nickname)==='murilo'||(player.aliases||[]).some(alias=>playerKey(alias)==='murilo'));
+  if(game&&murilo){
+   game.players=Array.isArray(game.players)?game.players:[];
+   const aliases=new Set([murilo.name,murilo.nickname,...(murilo.aliases||[])].filter(Boolean).map(playerKey));
+   let entries=game.players.filter(entry=>entry.playerId===murilo.id||aliases.has(playerKey(entry.name)));
+   if(!entries.length){const entry={name:murilo.name,playerId:murilo.id,position:'Jogador',attendance:'friday',present:false,paid:true,paidAt:new Date().toISOString(),foodWanted:true,foodPaid:true,foodPaidAt:new Date().toISOString()};game.players.push(entry);entries=[entry]}
+   for(const entry of entries){entry.name=murilo.name;entry.playerId=murilo.id;entry.position='Jogador';entry.paid=true;entry.paidAt=entry.paidAt||new Date().toISOString();entry.foodWanted=true;entry.foodPaid=true;entry.foodPaidAt=entry.foodPaidAt||new Date().toISOString()}
+   game.teams=Array.isArray(game.teams)?game.teams:structuredClone(defaultTeams);
+   while(game.teams.length<2)game.teams.push(structuredClone(defaultTeams[game.teams.length]||defaultTeams[1]));
+   for(const team of game.teams){team.playerIds=(team.playerIds||[]).filter(id=>id!==murilo.id&&!aliases.has(playerKey(normalized.players.find(player=>player.id===id)?.name||id)));team.players=(team.players||[]).filter(name=>!aliases.has(playerKey(name)))}
+   const secondTeam=game.teams[1],knownNames=(secondTeam.playerIds||[]).map(id=>normalized.players.find(player=>player.id===id)?.name).filter(Boolean);
+   secondTeam.playerIds=[...new Set([...(secondTeam.playerIds||[]),murilo.id])];
+   secondTeam.players=[...new Set([...(secondTeam.players||[]),...knownNames,murilo.name])];
+   game.teamsEdited=true;game.teamAssignmentMode='manual';normalized.muriloOct9RosterVersion=2;
+  }
+ }
+ for(const game of normalized.games)deduplicateGamePlayers(game);
+ normalized.gamePlayerDedupVersion=1;
+ for(const game of normalized.games){
+  const originalTeams=Array.isArray(game.teams)?game.teams.slice():structuredClone(defaultTeams);
+  const teams=originalTeams.slice(0,2);
+  while(teams.length<2)teams.push(structuredClone(defaultTeams[teams.length]));
+  const membership=new Map();
+  teams.forEach((team,index)=>{
+   const ids=Array.isArray(team.playerIds)?team.playerIds:[];
+   for(const id of ids)membership.set(String(id),index);
+   const names=Array.isArray(team.players)?team.players:ids.map(id=>normalized.players.find(player=>player.id===id)?.name).filter(Boolean);
+   for(const name of names)membership.set('name:'+playerKey(name),index);
+  });
+  const counts=[0,0],assigned=[[],[]];
+  const lineEntries=game.players.filter(isFieldPlayer);
+  for(const entry of lineEntries){
+   const preferred=membership.get(String(entry.playerId||''))??membership.get('name:'+playerKey(entry.name));
+   let index=Number.isInteger(preferred)&&counts[preferred]<8?preferred:-1;
+   if(index<0)index=[0,1].filter(teamIndex=>counts[teamIndex]<8).sort((a,b)=>counts[a]-counts[b]||a-b)[0]??-1;
+   if(index>=0){assigned[index].push(entry);counts[index]++}
+  }
+  const goalieEntries=game.players.filter(entry=>entry.position==='Goleiro'&&entry.participationConfirmed!==false),usedGoalies=new Set();
+  for(const entry of goalieEntries.slice(0,2)){
+   const preferred=teams.findIndex(team=>playerKey(team.goalkeeper)===playerKey(entry.name)||(entry.playerId&&team.goalkeeperId===entry.playerId));
+   const index=preferred>=0&&!usedGoalies.has(preferred)?preferred:[0,1].find(teamIndex=>!usedGoalies.has(teamIndex))??-1;
+   if(index>=0){teams[index].goalkeeper=entry.name;usedGoalies.add(index)}
+  }
+  const rebuilt=teams.map((team,index)=>{
+   const names=assigned[index].map(entry=>entry.name);
+   return {...team,players:names,playerIds:assigned[index].map(entry=>entry.playerId||normalized.players.find(player=>playerKey(player.name)===playerKey(entry.name))?.id).filter(Boolean)};
+  });
+  const changed=originalTeams.length!==2||lineEntries.some(entry=>{const prev=membership.get(String(entry.playerId||''))??membership.get('name:'+playerKey(entry.name));const next=rebuilt.findIndex(team=>team.playerIds.includes(entry.playerId)||team.players.some(name=>playerKey(name)===playerKey(entry.name)));return prev!==next});
+  game.teams=rebuilt;
+  if(changed)game.teamsEdited=true;
+ }
+ normalized.gameTeamFormatVersion=4;
+ normalized.payments=Array.isArray(data.payments)?data.payments:[];
+ for(const game of normalized.games)configureGameFood(game,normalized.foodFee);
+ const completedEvent=normalized.games.find(game=>game.id==='weekly-2026-10-09'||game.date==='2026-10-09');if(completedEvent){completedEvent.status='played';completedEvent.result={winner:'Time vencedor',winnerGoals:8,opponentGoals:6};}
+ normalized.octoberNineEventVersion=1;
+ normalized.monthlyFoodVersion=1;
+
+ if(data.muriloOct16RosterVersion!==1){
+  const game=normalized.games.find(item=>item.date==='2026-10-16'),murilo=normalized.players.find(player=>[player.name,player.nickname,...(player.aliases||[])].some(name=>playerKey(name)==='murilo'));
+  if(game&&murilo){
+   let entry=game.players.find(item=>item.playerId===murilo.id||playerKey(item.name)==='murilo');
+   if(!entry&&game.players.filter(isFieldPlayer).length<16){entry={playerId:murilo.id,name:murilo.name,position:'Jogador',attendance:'friday',present:false,paid:false,foodWanted:false,foodPaid:false};game.players.push(entry)}
+   if(entry&&isFieldPlayer(entry)){
+    for(const team of game.teams){team.playerIds=(team.playerIds||[]).filter(id=>id!==murilo.id);team.players=(team.players||[]).filter(name=>playerKey(name)!==playerKey(murilo.name))}
+    const target=[game.teams[1],game.teams[0]].find(team=>team&&(team.playerIds||[]).length<8);
+    if(target){target.playerIds.push(murilo.id);target.players.push(murilo.name);game.teamsEdited=true;game.teamAssignmentMode='manual'}
+    game.playerChoiceOverrides||={};game.playerChoiceOverrides[murilo.id]||={};game.playerChoiceOverrides[murilo.id].joined=new Date().toISOString();
+   }
+  }
+  normalized.muriloOct16RosterVersion=1;
+ }
+
+ for(const game of normalized.games){
+  if(game.date<today||game.status==='played'||game.status==='cancel')continue;
+  game.registrationMode='first-confirmed-v1';
+  if(game.firstConfirmedVersion!==1){
+   game.suggestedPlayers=structuredClone(game.players||[]);
+   game.suggestedTeams=structuredClone(game.teams||defaultTeams);
+   game.players=(game.players||[]).filter(entry=>entry.position==='Churrasco');
+   game.teams=(game.teams||defaultTeams).slice(0,2).map(team=>({...team,playerIds:[],players:[],goalkeeper:''}));
+   game.firstConfirmedVersion=1;
+  }
+ }
+ normalized.firstConfirmedVersion=1;
+ for(const game of normalized.games){for(const key of ['teams','suggestedTeams'])if(Array.isArray(game[key]))game[key]=game[key].map((team,index)=>({...team,name:'Time '+String(index+1).padStart(2,'0')}));}
+ return normalized;
+}
+function load(){try{return normalizeState(JSON.parse(localStorage.getItem(KEY))||{})}catch{return structuredClone(initial)}}
+const RECEIPT_DB='society-gramado-receipts-v1';
+function openReceiptDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(RECEIPT_DB,1);req.onupgradeneeded=()=>req.result.createObjectStore('files');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+async function saveLocalReceipt(file){if(file.size>5000000)throw new Error('O arquivo deve ter até 5 MB.');const db=await openReceiptDb(),key='r'+Date.now()+Math.random().toString(36).slice(2,7);await new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').put(file,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();return key}
+async function readLocalReceipt(key){const db=await openReceiptDb();const value=await new Promise((resolve,reject)=>{const req=db.transaction('files').objectStore('files').get(key);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});db.close();return value}
+function openReceipt(ref){const popup=window.open('about:blank','_blank');readLocalReceipt(ref.slice('localreceipt:'.length)).then(file=>{if(!file){popup?.close();toast('Este comprovante está salvo somente no dispositivo onde foi anexado.');return}const url=URL.createObjectURL(file);if(popup)popup.location.href=url;setTimeout(()=>URL.revokeObjectURL(url),60000)}).catch(()=>{popup?.close();toast('Não foi possível abrir o comprovante neste dispositivo.')})}
+function receiptCell(p){if(!p.receipt)return '—';if(p.receipt.startsWith('localreceipt:'))return `<button type="button" class="link" data-action="open-receipt" data-receipt="${esc(p.receipt)}">Abrir arquivo ↗</button>`;return `<a class="link" href="${esc(p.receipt)}" target="_blank" rel="noopener">Ver arquivo ↗</a>`}
+
+// A lista e a escalação compartilham a identidade permanente de cada participante.
+function reconcileGameParticipants(game){
+ for(const entry of game.players||[]){
+  const person=state.players.find(p=>p.id===entry.playerId)||findTeamPlayer(entry.name);
+  if(person){entry.playerId=person.id;entry.name=person.name}
+ }
+ deduplicateGamePlayers(game);
+ const claimed=new Set(),key=entry=>entry.playerId||playerKey(entry.name);
+ const resolve=value=>(game.players||[]).find(entry=>entry.playerId===value||playerKey(entry.name)===playerKey(value)||(findTeamPlayer(value)?.id===entry.playerId&&!!entry.playerId));
+ for(const team of (game.teams||[]).slice(0,2)){
+  const members=[...(team.playerIds||[]),...(team.players||[])].map(resolve).filter(Boolean),kept=[];
+  for(const entry of members){if(!isFieldPlayer(entry)||claimed.has(key(entry))||kept.length>=8)continue;claimed.add(key(entry));kept.push(entry)}
+  team.playerIds=kept.map(entry=>entry.playerId).filter(Boolean);team.players=kept.map(entry=>entry.name);
+  const goalie=resolve(team.goalkeeper);
+  team.goalkeeper=goalie?.position==='Goleiro'&&goalie.participationConfirmed!==false&&!claimed.has(key(goalie))?goalie.name:'';
+  if(team.goalkeeper)claimed.add(key(goalie));
+ }
+ for(const entry of game.players||[]){entry.teamIndex=gameTeamIndex(game,entry);entry.teamName=entry.teamIndex<0?'':game.teams[entry.teamIndex].name||'Time 0'+(entry.teamIndex+1)}
+}
+function setGamePlayerTeam(game,entry,index){
+ reconcileGameParticipants(game);
+ if(entry.position==='Churrasco')return false;
+ const target=game.teams?.[index];
+ if(index>=0&&!target)return false;
+ if(target&&entry.position==='Goleiro'&&target.goalkeeper&&playerKey(target.goalkeeper)!==playerKey(entry.name)){toast('Este time já tem goleiro.');return false}
+ if(target&&isFieldPlayer(entry)&&gameTeamIndex(game,entry)!==index&&teamPlayerNames(target).length>=8){toast('Este time já tem 8 jogadores de linha.');return false}
+ for(const team of game.teams||[]){
+  team.playerIds=(team.playerIds||[]).filter(id=>id!==entry.playerId);
+  team.players=(team.players||[]).filter(name=>playerKey(name)!==playerKey(entry.name));
+  if(playerKey(team.goalkeeper)===playerKey(entry.name))team.goalkeeper='';
+ }
+ if(target){if(entry.position==='Goleiro')target.goalkeeper=entry.name;else{if(entry.playerId)target.playerIds.push(entry.playerId);target.players.push(entry.name)}}
+ game.teamsEdited=true;game.teamAssignmentMode='manual';reconcileGameParticipants(game);return true;
+}
+
+let appSavePromise=Promise.resolve();
+
+let pendingAppSaves=0;
+let savedRosterChoices=new Map();
+function rosterChoiceValues(entry){return {joined:!!entry&&entry.participationConfirmed!==false&&entry.position!=='Churrasco',foodWanted:!!entry?.foodWanted,attendance:entry?.attendance||'friday'}}
+function rememberRosterChoices(){savedRosterChoices=new Map(state.games.flatMap(game=>(game.players||[]).filter(entry=>entry.playerId).map(entry=>[game.id+'|'+entry.playerId,rosterChoiceValues(entry)])))}
+function stampAdminRosterChoices(){
+ const now=new Date().toISOString();
+ for(const game of state.games){
+  const ids=new Set([...(game.players||[]).map(entry=>entry.playerId).filter(Boolean),...[...savedRosterChoices.keys()].filter(key=>key.startsWith(game.id+'|')).map(key=>key.slice(game.id.length+1))]);
+  for(const id of ids){
+   const before=savedRosterChoices.get(game.id+'|'+id),entry=(game.players||[]).find(item=>item.playerId===id),after=rosterChoiceValues(entry);
+   for(const field of ['joined','foodWanted','attendance']){
+    if(before&&before[field]===after[field])continue;
+    game.playerChoiceOverrides||={};game.playerChoiceOverrides[id]||={};game.playerChoiceOverrides[id][field]=now;
+   }
+  }
+ }
+}
+function freshPlayerChoice(game,player,rawChoice){
+ const raw=rawChoice&&typeof rawChoice==='object'?rawChoice:{attendance:rawChoice},choice={position:raw.position};
+ const entry=findGameRosterEntry(game,player),overrides=game.playerChoiceOverrides?.[player.id]||{},applied=game.appliedPlayerChoices?.[player.id]||{};
+ for(const field of ['joined','foodWanted','attendance']){
+  if(!Object.prototype.hasOwnProperty.call(raw,field))continue;
+  const time=Date.parse(raw.fieldUpdatedAt?.[field]||''),floor=Math.max(Date.parse(overrides[field]||'')||0,Date.parse(applied[field]||'')||0);
+  const legacyJoin=!Number.isFinite(time)&&field==='joined'&&raw.joined===true&&!entry&&!floor;
+  if(!(Number.isFinite(time)&&time>floor)&&!legacyJoin)continue;
+  choice[field]=raw[field];game.appliedPlayerChoices||={};game.appliedPlayerChoices[player.id]||={};
+  game.appliedPlayerChoices[player.id][field]=legacyJoin?new Date().toISOString():raw.fieldUpdatedAt[field];
+ }
+ return choice;
+}
+
+function persist({fromPlayer=false}={}){for(const game of state.games)reconcileGameParticipants(game);if(!fromPlayer)stampAdminRosterChoices();rememberRosterChoices();localStorage.setItem(KEY,JSON.stringify(state));const snapshot=structuredClone(state);pendingAppSaves++;appSavePromise=appSavePromise.catch(()=>{}).then(()=>saveAppData(snapshot)).then(()=>{syncPlayerSnapshots();syncPlayerLoginAliases();syncGameAwardBallots();syncGameRosters();return true}).catch(()=>{toast('Não foi possível sincronizar com Firebase. Confira as regras do Firestore.');return false}).finally(()=>{pendingAppSaves--;if(pendingRosterImport&&!rosterImportBusy)queueMicrotask(processRosterImport)});return appSavePromise;}
+function syncPlayerSnapshots(){if(!playerAccountsLoaded||!currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(currentUser.uid))return;playerSyncPromise=playerSyncPromise.then(async()=>{for(const rec of playerAccounts){const player=state.players.find(p=>p.id===rec.playerId);if(player)await savePlayerData(rec.id,{...buildPlayerSnapshot(player),playerId:player.id,approved:true,primaryLogin:!!rec.primaryLogin,loginEmail:rec.loginEmail||'',loginPhone:rec.loginPhone||'',displayName:rec.displayName||'',displayNickname:rec.displayNickname||'',attendanceChoices:playerAttendanceChoices(player,rec.attendanceChoices||{})})}}).catch(()=>toast('Não foi possível atualizar os saldos dos jogadores.'));}
+function syncGameRosters(){if(!appDataLoaded||!currentUser||currentUser.role!=='admin')return;for(const game of state.games.filter(item=>item.status!=='cancel')){const venue=field(game.fieldId),teams=(game.teams||[]).slice(0,2).map((team,index)=>({name:team.name||'Time 0'+(index+1),playerIds:Array.isArray(team.playerIds)?team.playerIds.slice():teamPlayerNames(team).map(name=>findTeamPlayer(name)?.id).filter(Boolean),players:teamPlayerNames(team),goalkeeper:team.goalkeeper||'',goalkeeperId:findTeamPlayer(team.goalkeeper)?.id||''}));const assignedIndex=player=>teams.findIndex(team=>team.playerIds.includes(player.playerId||player.id)||team.players.some(name=>playerKey(name)===playerKey(player.name))||(player.position==='Goleiro'&&(team.goalkeeperId===(player.playerId||player.id)||playerKey(team.goalkeeper)===playerKey(player.name))));saveRecord('gameRosters',{id:game.id,date:game.date,registrationMode:game.registrationMode||'',signupClosesAtMs:new Date(game.date+'T'+(game.time||'19:30')+':00-03:00').getTime(),fee:Number(game.fee||0),foodFee:Number(game.foodFee||0),foodName:game.foodName||'Churrasco',status:game.status,result:game.result||null,time:game.time||'19:30',field:venue?.name||'Gramado',maps:venue?.maps||game.maps||'',waze:venue?.waze||game.waze||'',roster:(game.players||[]).filter(isFieldPlayer).concat((game.players||[]).filter(player=>player.position==='Goleiro'&&player.participationConfirmed!==false)).map((player,index)=>({name:player.name,position:player.position==='Goleiro'?'Goleiro':'Jogador',playerId:player.playerId||findTeamPlayer(player.name)?.id||'',signupNumber:index+1,teamIndex:assignedIndex(player)})),teams,teamAssignmentMode:game.teamAssignmentMode||'manual',goalkeepers:teams.map(team=>team.goalkeeper).filter(Boolean),updatedAt:new Date().toISOString()}).catch(()=>toast('Não foi possível atualizar a lista dos jogadores.'));}}
+function playerAccountIsReleased(account){return !!(account?.approved&&account.loginEmail)}
+function playerAccountHasAlias(account){return !!(playerAccountIsReleased(account)&&loginAliases.some(alias=>alias.email===account.loginEmail))}
+function playerAccountForParticipant(player){
+ if(!player)return null;
+ const linked=playerAccounts.filter(row=>row.playerId===player.id);
+ if(!linked.length)return null;
+ const digits=phoneDigits(player.phone||''),password=digits.length>=9?digits.slice(-9):'123456',stableEmail=playerEmailFor(player.name,password,player.id);
+ return linked.find(row=>row.primaryLogin&&row.approved&&row.loginEmail)
+  ||linked.find(playerAccountHasAlias)
+  ||linked.find(row=>row.approved&&row.loginEmail===stableEmail)
+  ||linked.find(row=>row.approved&&row.loginEmail)
+  ||linked[0];
+}
+function syncPlayerLoginAliases(){
+ if(!playerAccountsLoaded||!accessRequestsLoaded||!loginAliasesLoaded||!currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(currentUser.uid))return Promise.resolve(false);
+ loginAliasSyncPromise=loginAliasSyncPromise.then(async()=>{
+  const candidates=new Map();
+  for(const player of state.players){
+   const rec=playerAccountForParticipant(player);
+   if(!rec?.approved||!rec.loginEmail)continue;
+   const request=accessRequests.find(r=>r.id===rec.id),phone=request?.phone||rec.loginPhone||rec.phone||player.phone||'123456';
+   const aliases=new Set([player.name,player.nickname,...(player.aliases||[]),rec.name,rec.nickname,rec.displayName,rec.displayNickname,request?.firstName,request?.fullName,request?.nickname].filter(Boolean).map(value=>String(value).trim()).filter(Boolean));
+   for(const alias of aliases){
+    const key=await playerAliasId(alias,phone),owners=candidates.get(key)||new Map();
+    owners.set(player.id,{id:key,email:rec.loginEmail,playerId:player.id,phone:phoneDigits(phone)});
+    candidates.set(key,owners);
+    const first=alias.split(/\\s+/)[0];
+    if(playerKey(first)!==playerKey(alias)){
+     const firstKey=await playerAliasId(first,phone),firstOwners=candidates.get(firstKey)||new Map();
+     firstOwners.set(player.id,{id:firstKey,email:rec.loginEmail,playerId:player.id,phone:phoneDigits(phone)});
+     candidates.set(firstKey,firstOwners);
+    }
+   }
+  }
+  const expected=new Map([...candidates.entries()].filter(([,owners])=>owners.size===1).map(([id,owners])=>[id,[...owners.values()][0]]));
+  const saved=new Map(loginAliases.map(row=>[row.id,row]));
+  for(const [id,row] of expected){const old=saved.get(id);if(old?.email!==row.email||old?.playerId!==row.playerId||phoneDigits(old?.phone||'')!==row.phone)await saveRecord('playerLoginAliases',row);}
+  const retained=new Map(expected);
+  for(const old of loginAliases){
+   if(retained.has(old.id))continue;
+   const account=playerAccounts.find(row=>row.loginEmail===old.email&&row.playerId===old.playerId&&playerAccountIsReleased(row));
+   const player=state.players.find(row=>row.id===old.playerId&&row.active!==false);
+   const request=account&&accessRequests.find(row=>row.id===account.id);
+   const currentPhone=phoneDigits(request?.phone||account?.loginPhone||account?.phone||player?.phone||'123456');
+   const currentOwners=candidates.get(old.id);
+   const keyIsUnambiguous=!currentOwners||currentOwners.size===1&&currentOwners.has(old.playerId);
+   if(account&&player&&currentPhone===phoneDigits(old.phone||'')&&keyIsUnambiguous)retained.set(old.id,old);
+   else await deleteRecord('playerLoginAliases',old.id);
+  }
+  loginAliases=[...retained.values()];
+  if(page==='players')render();
+  return true;
+ }).catch(error=>{toast('Não foi possível sincronizar os nomes de acesso: '+playerAccessError(error));return false});
+ return loginAliasSyncPromise;
+}
+function findParticipantForAccess(rec){const phone=rec.phone||'';const byPhone=state.players.filter(p=>phone&&p.phone&&playerPhoneMatches(phone,p.phone));if(byPhone.length===1)return byPhone[0];if(byPhone.length>1)return null;const keys=[rec.firstName,rec.fullName,rec.nickname,rec.name,rec.alias].filter(Boolean).map(playerKey);const exact=state.players.filter(p=>[p.name,p.nickname,...(p.aliases||[])].filter(Boolean).some(name=>keys.includes(playerKey(name))));return exact.length===1?exact[0]:null;}
+async function attachPlayerAccount(rec,request){let player=findParticipantForAccess({...rec,...request});if(!player){let id=`p-${rec.id}`;if(state.players.some(p=>p.id===id))id=`${id}-${Date.now()}`;player={id,name:String(request?.fullName||request?.name||rec.name||request?.firstName||'Jogador').trim(),nickname:String(request?.nickname||rec.nickname||request?.fullName||rec.name||'').trim(),phone:String(request?.phone||rec.phone||''),active:true};state.players.push(player)}else{player.phone=player.phone||request?.phone||rec.phone||'';player.nickname=player.nickname||request?.nickname||rec.nickname||''}ensurePlayerInUpcomingGame(player);const linked={...rec,playerId:player.id,approved:true,primaryLogin:true};await saveAppData(state);await savePlayerData(rec.id,{...buildPlayerSnapshot(player),playerId:player.id,approved:true,primaryLogin:true,attendanceChoices:rec.attendanceChoices||{}});syncGameRosters();if(request&&request.status!=='approved')await saveRecord('playerAccessRequests',{...request,status:'approved'});playerAccounts=playerAccounts.map(x=>x.id===rec.id?linked:x);if(request)accessRequests=accessRequests.map(x=>x.id===request.id?{...request,status:'approved'}:x);syncPlayerSnapshots();localStorage.setItem(KEY,JSON.stringify(state));render();}
+let playerBatchProvisionInFlight = false;
+function playerAccessError(error){
+ if(error?.code==='auth/invalid-credential'||error?.code==='auth/wrong-password')return 'já existe uma conta com senha diferente da senha atual';
+ if(error?.code==='auth/operation-not-allowed')return 'ative E-mail/senha em Authentication > Método de login';
+ if(error?.code==='auth/weak-password')return 'a senha foi recusada pelo Firebase';
+ if(error?.code==='permission-denied')return 'regras do Firestore ainda não publicadas';
+ return error?.code||error?.message||'falha desconhecida';
+}
+async function activateAllPlayerAccounts() {
+ if (playerBatchProvisionInFlight) return;
+ if (!currentUser || currentUser.role !== 'admin') { toast('Entre no painel administrativo para ativar os acessos.'); return; }
+ if(!appDataLoaded||!playerAccountsLoaded||!accessRequestsLoaded||!loginAliasesLoaded){toast('Aguarde a sincronização dos participantes e tente novamente.');return;}
+ playerBatchProvisionInFlight = true;
+ playerBatchReport = 'Ativando os acessos…';
+ render();
+ const failures = [], completed = [];
+ try {
+  const participants=state.players.filter(item=>item.active!==false);
+  for (const player of participants) {
+   const rawPhone=phoneDigits(player.phone||'');
+   const loginPassword=rawPhone.length>=9?rawPhone.slice(-9):'123456';
+   try {
+    const linked=playerAccountForParticipant(player);
+    const priorRequest=(linked&&accessRequests.find(row=>row.id===linked.id))||accessRequests.find(request=>findParticipantForAccess(request)?.id===player.id);
+    // Reuses the original first-name email for an existing first-access account; new accounts get a unique full-name email.
+    const accountName=linked?.loginEmail?player.name:(priorRequest?.firstName||player.name.trim());
+    const uniqueEmail=playerEmailFor(player.name,loginPassword,player.id);
+    const priorEmail=linked?.loginEmail||priorRequest?.loginEmail||(priorRequest?playerEmailFor(priorRequest.firstName,loginPassword):uniqueEmail);
+    let account;
+    try { account=await provisionPlayerAccount(accountName,loginPassword,priorEmail); }
+    catch(error) {
+     if(!['auth/invalid-credential','auth/wrong-password'].includes(error?.code)||priorEmail===uniqueEmail)throw error;
+     account=await provisionPlayerAccount(player.name,loginPassword,uniqueEmail);
+    }
+    const existing=playerAccounts.find(row=>row.id===account.uid);
+    const request=accessRequests.find(row=>row.id===account.uid);
+    const requestData={id:account.uid,firstName:player.name.trim().split(/\s+/)[0],fullName:player.name.trim(),nickname:String(player.nickname||player.name).trim(),phone:rawPhone||'123456',createdAt:request?.createdAt||new Date().toISOString(),status:'approved'};
+    await saveRecord('playerAccessRequests',requestData);
+    await savePlayerData(account.uid,{...buildPlayerSnapshot(player),playerId:player.id,approved:true,primaryLogin:true,loginEmail:account.email,loginPhone:loginPassword,displayName:existing?.displayName||player.name,displayNickname:existing?.displayNickname||String(player.nickname||player.name),attendanceChoices:existing?.attendanceChoices||{}});
+    const row={id:account.uid,...requestData,name:player.name,playerId:player.id,approved:true,primaryLogin:true,loginEmail:account.email,loginPhone:loginPassword,displayName:existing?.displayName||player.name,displayNickname:existing?.displayNickname||String(player.nickname||player.name),attendanceChoices:existing?.attendanceChoices||{}};
+    playerAccounts=[...playerAccounts.filter(item=>item.id!==row.id),row];
+    accessRequests=[...accessRequests.filter(item=>item.id!==requestData.id),requestData];
+    completed.push(player.name);
+   } catch(error) { failures.push({name:player.name,message:playerAccessError(error)}); }
+  }
+  const aliasesSynced=await syncPlayerLoginAliases();
+  if(!aliasesSynced)failures.push({name:'Apelidos de acesso',message:'Firestore recusou a gravação. Publique as regras atualizadas e tente novamente.'});
+  const released=participants.filter(player=>playerAccountIsReleased(playerAccountForParticipant(player)));
+  const pendingNames=participants.filter(player=>!playerAccountIsReleased(playerAccountForParticipant(player))).map(player=>player.name);
+  const aliasesMissing=participants.filter(player=>playerAccountIsReleased(playerAccountForParticipant(player))&&!playerAccountHasAlias(playerAccountForParticipant(player)));
+  if(pendingNames.length)playerBatchReport=`Acessos liberados: ${released.length}/${participants.length}. Não ativados: ${pendingNames.slice(0,8).join(', ')}${pendingNames.length>8?' e outros':''}.`;
+  else if(!aliasesSynced||aliasesMissing.length)playerBatchReport=`${released.length} contas continuam liberadas. Sincronização dos nomes de login em andamento para ${aliasesMissing.length} participante(s); o acesso não voltou a pendente.`;
+  else playerBatchReport=`Acessos liberados para ${released.length} participantes.`;
+  toast(playerBatchReport);
+  if(failures.length)console.warn('Resultado da ativação de acessos:',failures);
+  render();
+ } finally { playerBatchProvisionInFlight=false; }
+}
+function processPlayerAccounts(){if(!appDataLoaded||!playerAccountsLoaded||!accessRequestsLoaded||!currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(currentUser.uid))return;for(const request of accessRequests.filter(r=>r.status==='pending')){const rec=playerAccounts.find(x=>x.id===request.id)||{id:request.id,name:request.fullName||request.firstName,nickname:request.nickname,phone:request.phone,approved:true};if(autoApprovalInFlight.has(request.id))continue;autoApprovalInFlight.add(request.id);attachPlayerAccount(rec,request).then(()=>toast(`Acesso de ${request.fullName||request.firstName} liberado automaticamente.`)).catch(()=>toast('Não foi possível liberar o primeiro acesso. Confira as regras do Firestore.')).finally(()=>autoApprovalInFlight.delete(request.id));}for(const rec of playerAccounts.filter(x=>x.approved&&!x.playerId)){if(autoApprovalInFlight.has(rec.id))continue;autoApprovalInFlight.add(rec.id);attachPlayerAccount(rec,accessRequests.find(r=>r.id===rec.id)).catch(()=>toast('Não foi possível vincular o jogador ao elenco. Confira as regras do Firestore.')).finally(()=>autoApprovalInFlight.delete(rec.id));}}
+function gameStartMillis(game){return Date.parse(`${game.date}T${game.time||'19:30'}:00-03:00`)}
+function awardWindow(game){const start=gameStartMillis(game);return {opensAtMs:start+30*60000,closesAtMs:start+(Number(game.durationMinutes||60)+60)*60000}}
+function presentPlayerIds(game){return new Set((game.players||[]).filter(p=>p.present).map(p=>p.playerId||findParticipantForEntry(p)?.id).filter(Boolean))}
+function findParticipantForEntry(entry){return state.players.find(p=>p.id===entry.playerId||playerKey(p.name)===playerKey(entry.name))}
+function awardTeamCandidates(game,team,index){const present=presentPlayerIds(game),ids=Array.isArray(team.playerIds)?team.playerIds.slice():((team.players||[]).map(name=>findTeamPlayer(name)?.id).filter(Boolean));const keeper=findTeamPlayer(team.goalkeeper)?.id;if(keeper)ids.push(keeper);return [...new Set(ids)].filter(id=>present.has(id)).map(id=>({id,name:state.players.find(p=>p.id===id)?.nickname||state.players.find(p=>p.id===id)?.name||'Jogador',goalkeeper:id===keeper}))}
+function buildAwardBallot(game){const window=awardWindow(game),eligibleVoterIds=[...new Set(playerAccounts.filter(a=>a.approved!==false&&a.playerId&&(game.players||[]).some(p=>p.present&&(p.playerId===a.playerId||playerKey(p.name)===playerKey(state.players.find(x=>x.id===a.playerId)?.name||'')))).map(a=>a.id))];const teams=Object.fromEntries((game.teams||[]).slice(0,2).map((team,i)=>{const id=`team-${i+1}`,candidates=awardTeamCandidates(game,team,i);return [id,{id,name:team.name||`Time ${i+1}`,candidateIds:candidates.map(p=>p.id),candidates}]}));return {id:game.id,gameId:game.id,date:game.date,time:game.time||'19:30',opensAtMs:window.opensAtMs,closesAtMs:window.closesAtMs,opensAt:new Date(window.opensAtMs),closesAt:new Date(window.closesAtMs),eligibleVoterIds,teams}}
+function syncGameAwardBallots(){if(!cloudEnabled||!appDataLoaded||!playerAccountsLoaded||!currentUser||!(firebaseConfig.adminUids||[firebaseConfig.adminUid]).includes(currentUser.uid))return;for(const game of state.games.filter(g=>g.status!=='cancel')){const ballot=buildAwardBallot(game),signature=JSON.stringify(ballot);if(awardBallotSignatures.get(game.id)===signature)continue;awardBallotSignatures.set(game.id,signature);saveRecord('gameAwardBallots',ballot).then(()=>{awardBallots=[...awardBallots.filter(x=>x.id!==ballot.id),ballot];if(page==='dashboard')render()}).catch(()=>{awardBallotSignatures.delete(game.id);toast('Não foi possível atualizar a votação do jogo. Verifique as regras do Firestore.')})}}
+function voteWindowStatus(ballot,now=Date.now()){const opensAt=ballot.opensAtMs??ballot.opensAt?.toMillis?.()??Date.parse(ballot.opensAt),closesAt=ballot.closesAtMs??ballot.closesAt?.toMillis?.()??Date.parse(ballot.closesAt);if(now<opensAt)return 'before';if(now<=closesAt)return 'open';return 'closed'}
+function ballotVotesFor(ballot,teamId){return awardVotes.filter(v=>v.gameId===ballot.gameId&&v.teamId===teamId)}
+function winningCandidates(ballot,teamId){const team=ballot.teams[teamId];if(!team)return [];const votes=ballotVotesFor(ballot,teamId),counts=new Map(team.candidates.map(c=>[c.id,0]));votes.forEach(v=>counts.set(v.candidatePlayerId,(counts.get(v.candidatePlayerId)||0)+1));const max=Math.max(0,...counts.values());return max?team.candidates.filter(c=>counts.get(c.id)===max).map(c=>({...c,votes:max})):[]}
+function buildPlayerSnapshot(player){
+ const games=state.games.filter(g=>(g.players||[]).some(p=>p.playerId===player.id||playerKey(p.name)===playerKey(player.name))).map(g=>{
+  const p=g.players.find(x=>x.playerId===player.id||playerKey(x.name)===playerKey(player.name)),foodOnly=p.position==='Churrasco';
+  return {id:g.id,date:g.date,registrationMode:g.registrationMode||'',gameChargeConfirmed:!!p.gameChargeConfirmed,status:g.status,result:g.result||null,time:g.time,field:field(g.fieldId)?.name||'Gramado',maps:field(g.fieldId)?.maps||g.maps||'',waze:field(g.fieldId)?.waze||g.waze||'',fee:p.position==='Goleiro'||foodOnly?0:Number(g.fee||0),position:p.position||'Jogador',paid:p.position==='Goleiro'||foodOnly?false:!!p.paid,foodName:g.foodName||'Churrasco',foodFee:Number(p.foodWanted?g.foodFee||0:0),foodPaid:!!p.foodPaid,foodWanted:!!p.foodWanted,attendance:p.attendance||'friday',present:!!p.present,receipt:!!p.receipt,roster:(g.players||[]).filter(isFieldPlayer).concat((g.players||[]).filter(entry=>entry.position==='Goleiro'&&entry.participationConfirmed!==false)).map((entry,index)=>({name:entry.name,playerId:entry.playerId||'',position:entry.position==='Goleiro'?'Goleiro':'Jogador',signupNumber:index+1,teamIndex:gameTeamIndex(g,entry)})),teams:(g.teams||[]).slice(0,2).map((team,index)=>({name:team.name||'Time 0'+(index+1),playerIds:Array.isArray(team.playerIds)?team.playerIds.slice():[],players:teamPlayerNames(team),goalkeeper:team.goalkeeper||''})),goalkeepers:(g.teams||[]).slice(0,2).map(team=>team.goalkeeper).filter(Boolean)}
+ });
+ const rosterGames=state.games.filter(g=>g.status!=='played'&&g.status!=='cancel').map(g=>{
+  const entry=(g.players||[]).find(p=>p.playerId===player.id||playerKey(p.name)===playerKey(player.name));
+  return {id:g.id,date:g.date,registrationMode:g.registrationMode||'',time:g.time||'19:30',field:field(g.fieldId)?.name||'Gramado',maps:field(g.fieldId)?.maps||g.maps||'',waze:field(g.fieldId)?.waze||g.waze||'',fee:Number(g.fee||0),foodFee:Number(g.foodFee||0),foodName:g.foodName||'Churrasco',joined:!!entry&&entry.participationConfirmed!==false&&entry.position!=='Churrasco',foodWanted:!!g.foodFee&&!!entry?.foodWanted,position:entry?.position||(g.suggestedPlayers||[]).find(item=>item.playerId===player.id)?.position||((g.teams||[]).slice(0,2).some(team=>playerKey(team.goalkeeper)===playerKey(player.name))?'Goleiro':'Jogador'),roster:(g.players||[]).filter(isFieldPlayer).concat((g.players||[]).filter(item=>item.position==='Goleiro'&&item.participationConfirmed!==false)).map((item,index)=>({name:item.name,position:item.position==='Goleiro'?'Goleiro':'Jogador',playerId:item.playerId||'',signupNumber:index+1,teamIndex:gameTeamIndex(g,item)})),teams:(g.teams||[]).slice(0,2).map((team,index)=>({name:team.name||'Time 0'+(index+1),playerIds:Array.isArray(team.playerIds)?team.playerIds.slice():[],players:teamPlayerNames(team),goalkeeper:team.goalkeeper||''})),goalkeepers:(g.teams||[]).slice(0,2).map(team=>team.goalkeeper).filter(Boolean)};
+ });
+ return {name:player.name,bmiLevel:latestBMILevel(player),legacyHealthRecords:player.healthRecords||[],games,rosterGames,paymentLedger:Object.fromEntries(state.games.map(game=>{const entry=findGameRosterEntry(game,player)||(game.suggestedPlayers||[]).find(p=>p.playerId===player.id);return [game.id,{id:game.id,position:entry?.position||'Jogador',fee:Number(game.fee||0),paid:!!entry?.paid,foodPaid:!!entry?.foodPaid,gameChargeConfirmed:!!entry?.gameChargeConfirmed}]})),gamePositions:Object.fromEntries(state.games.map(game=>{const entry=findGameRosterEntry(game,player)||(game.suggestedPlayers||[]).find(p=>p.playerId===player.id);return [game.id,entry?.position||'Jogador']})),pix:state.pix,updatedAt:new Date().toISOString()}
+}function playerFieldLinks(game){const shared=sharedGameRosters.find(item=>item.id===game.id),known=state.fields.find(item=>playerKey(item.name)===playerKey(game.field)),template=scheduleTemplates.find(item=>item.date===game.date),fallback=known||defaultFields.find(item=>item.id===template?.fieldId),maps=game.maps||shared?.maps||fallback?.maps||'',waze=game.waze||shared?.waze||fallback?.waze||'';return (maps?` · <a class="link" href="${esc(maps)}" target="_blank" rel="noopener">Google Maps ↗</a>`:'')+(waze?` · <a class="link" href="${esc(waze)}" target="_blank" rel="noopener">Waze ↗</a>`:'')}
+function playerRosterPanel(game){
+ if(!game)return '';
+ const venue=game.field||defaultFields.find(item=>item.id===scheduleTemplates.find(template=>template.date===game.date)?.fieldId)?.name||'Gramado';
+ let roster=Array.isArray(game.roster)?game.roster.filter(entry=>entry.position!=='Churrasco'&&entry.participationConfirmed!==false).slice():[];
+ if(!roster.length&&game.date==='2026-10-09')roster=octoberNineRoster.map((name,index)=>({name,position:'Jogador',signupNumber:index+1}));
+ const teams=Array.isArray(game.teams)?game.teams.slice(0,2):[];
+ const goalkeepers=Array.isArray(game.goalkeepers)?game.goalkeepers.filter(Boolean):[];
+ for(const name of goalkeepers){if(!roster.some(entry=>playerKey(entry.name)===playerKey(name)))roster.push({name,position:'Goleiro',signupNumber:roster.length+1})}
+ const teamFor=entry=>{if(Number.isInteger(entry.teamIndex)&&entry.teamIndex>=0&&entry.teamIndex<teams.length)return entry.teamIndex;return teams.findIndex(team=>(team.playerIds||[]).includes(entry.playerId)||(Array.isArray(team.players)?team.players:teamPlayerNames(team)).some(name=>playerKey(name)===playerKey(entry.name))||(entry.position==='Goleiro'&&playerKey(team.goalkeeper)===playerKey(entry.name)))};
+ const indexed=roster.map((entry,index)=>({...entry,signupNumber:Number(entry.signupNumber)||index+1,teamIndex:teamFor(entry)})).sort((a,b)=>a.signupNumber-b.signupNumber);
+ const rowMarkup=(entry,goalkeeper=false)=>`<div class="week-player full-roster-player ${goalkeeper?'goalkeeper-row':'team-color-'+(entry.teamIndex+1)}"><span class="number">${goalkeeper?'🥅':String(entry.signupNumber).padStart(2,'0')}</span><span class="full-roster-name">${esc(entry.name)}<span class="roster-team-tag">${goalkeeper?'GOLEIRO':esc(teams[entry.teamIndex]?.name||'Time 0'+(entry.teamIndex+1))}</span></span><small>${goalkeeper?'Goleiro':'Jogador'}</small></div>`;
+ const teamSections=teams.map((team,index)=>{const entries=indexed.filter(entry=>entry.teamIndex===index),players=entries.filter(entry=>entry.position!=='Goleiro'),keepers=entries.filter(entry=>entry.position==='Goleiro'&&entry.participationConfirmed!==false);return `<section class="weekly-team-card team-color-${index+1}"><div class="weekly-team-head"><strong>${esc('Time '+String(index+1).padStart(2,'0'))}</strong><span>${players.length} jogadores · ${keepers.length} goleiro(s)</span></div><div class="full-roster-list">${players.map(entry=>rowMarkup(entry)).join('')||'<div class="team-empty">Nenhum jogador neste time.</div>'}</div>${keepers.length?`<div class="weekly-goalkeepers goalkeeper-highlight"><b>GOLEIRO${keepers.length>1?'S':''}</b>${keepers.map(entry=>rowMarkup(entry,true)).join('')}</div>`:''}</section>`}).join('');
+ const waiting=indexed.filter(entry=>entry.teamIndex<0);
+ const waitingSection=waiting.length?`<section class="weekly-team-card team-color-waiting"><div class="weekly-team-head"><strong>Aguardando divisão</strong><span>${waiting.length} participante(s)</span></div><div class="full-roster-list">${waiting.map(entry=>rowMarkup(entry)).join('')}</div></section>`:'';
+ const modeLabel=usesFirstConfirmation(game)?'Inscritos confirmados por ordem de reserva':game.teamAssignmentMode==='random'?'Sorteio aleatório':'Escolha dos administradores';
+ return `<section class="panel full-roster-panel"><div class="panel-head"><div><h3>Escalação completa</h3><small class="subcell">${indexed.length} inscritos · ordem agrupada por time</small></div></div><p class="sub"><b>${esc(venue)}</b>${playerFieldLinks(game)} · ${modeLabel}. Todos os jogadores e goleiros aparecem na sequência dos times.</p><div class="full-roster-teams">${teamSections}${waitingSection||(!indexed.length?'<div class="empty">Nenhum inscrito nesta semana.</div>':'')}</div></section>`;
+}function applyPlayerChoices(rows){
+ if(!appDataLoaded)return;
+ let changed=false;
+ for(const account of rows){
+  if(!account.playerId||!account.attendanceChoices)continue;
+  const player=state.players.find(item=>item.id===account.playerId);if(!player)continue;
+  for(const [gameId,rawChoice] of Object.entries(account.attendanceChoices)){
+   const game=state.games.find(item=>item.id===gameId);if(!game)continue;
+   const choice=freshPlayerChoice(game,player,rawChoice);
+   if(!['joined','foodWanted','attendance'].some(field=>Object.prototype.hasOwnProperty.call(choice,field)))continue;
+   changed=true;
+   if(!game.foodFee&&typeof choice.foodWanted==='boolean')choice.foodWanted=false;
+   let entry=game.players.find(item=>item.playerId===player.id||playerKey(item.name)===playerKey(player.name));
+   if(['friday','saturday'].includes(choice.attendance)&&entry&&entry.attendance!==choice.attendance){entry.attendance=choice.attendance;changed=true}
+   if(choice.joined===true&&!usesFirstConfirmation(game)&&game.date>=today&&game.status!=='cancel'&&game.status!=='played'){
+    if(!entry){addParticipantToGame(game,player,choice.position==='Goleiro'?'Goleiro':'Jogador');entry=game.players.find(item=>item.playerId===player.id||playerKey(item.name)===playerKey(player.name));if(entry)changed=true}
+    else if(entry.position==='Churrasco'&&(choice.position==='Goleiro'?game.players.filter(item=>item.position==='Goleiro'&&item.participationConfirmed!==false).length<2:fieldCountGame(game)<16)){entry.position=choice.position==='Goleiro'?'Goleiro':'Jogador';addPlayerToSuggestedTeam(game,player,entry.position);changed=true}
+   }else if(choice.joined===false&&!usesFirstConfirmation(game)&&entry&&game.date>today&&!entry.paid&&!entry.foodPaid&&(entry.position!=='Churrasco'||choice.foodWanted!==true)){
+    for(const team of game.teams||[]){team.playerIds=(team.playerIds||[]).filter(id=>id!==player.id);team.players=(team.players||[]).filter(name=>playerKey(name)!==playerKey(player.name));if(playerKey(team.goalkeeper)===playerKey(player.name))team.goalkeeper=''}
+    if(choice.foodWanted===true){entry.position='Churrasco';entry.paid=false;entry.foodWanted=true}
+    else{game.players=game.players.filter(item=>item!==entry);entry=null}
+    changed=true;
+   }
+   if(!entry&&(choice.joined===false||usesFirstConfirmation(game))&&choice.foodWanted===true&&game.date>=today&&game.status!=='cancel'&&game.status!=='played'){
+    entry={name:player.name,playerId:player.id,position:'Churrasco',attendance:choice.attendance||'friday',present:false,paid:false,foodWanted:true,foodPaid:false};game.players.push(entry);changed=true;
+   }
+   if(entry&&typeof choice.foodWanted==='boolean'&&entry.foodWanted!==(!!game.foodFee&&choice.foodWanted)){entry.foodWanted=!!game.foodFee&&choice.foodWanted;changed=true}
+   if(entry&&entry.position==='Churrasco'&&choice.joined!==true&&choice.foodWanted===false&&!entry.paid&&!entry.foodPaid){game.players=game.players.filter(item=>item!==entry);entry=null;changed=true}
+   // A posição já registrada é definida pelo administrador; escolhas antigas não a sobrescrevem.
+   if(!game.teamsEdited)autoDistributeGameTeams(game);
+  }
+ }
+ if(changed){persist({fromPlayer:true});render()}
+}function playerAttendanceChoices(player,existing={}){
+ const choices={...(existing||{})};
+ for(const game of state.games.filter(item=>item.date>=today&&item.status!=='cancel'&&item.status!=='played')){
+  const entry=(game.players||[]).find(item=>item.playerId===player.id||playerKey(item.name)===playerKey(player.name));
+  const old=choices[game.id],oldChoice=old&&typeof old==='object'?old:{attendance:old};
+  const fieldUpdatedAt={...(oldChoice.fieldUpdatedAt||{})};for(const field of ['joined','foodWanted','attendance']){const stamp=game.playerChoiceOverrides?.[player.id]?.[field];if(stamp&&(!fieldUpdatedAt[field]||Date.parse(stamp)>Date.parse(fieldUpdatedAt[field])))fieldUpdatedAt[field]=stamp}
+  choices[game.id]={...oldChoice,fieldUpdatedAt,joined:!!entry&&entry.participationConfirmed!==false&&entry.position!=='Churrasco',foodWanted:!!entry?.foodWanted,position:entry?.position==='Churrasco'?'Jogador':entry?.position||oldChoice.position||'Jogador',attendance:entry?.attendance||oldChoice.attendance||'friday'};
+ }
+ return choices;
+}
+
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+function formatPix(value){const digits=String(value||'').replace(/\D/g,'');return digits.length===11?`${digits.slice(0,2)} ${digits.slice(2,3)} ${digits.slice(3,7)} ${digits.slice(7)}`:digits}
+const localDate=s=>s?new Date(`${s}T12:00:00`).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}):'';
+const initials=n=>String(n||'?').split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
+function playerKey(n){return String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]/g,'')}
+const phoneDigits=n=>String(n||'').replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'');
+function displayPhone(phone){const digits=String(phone||'').replace(/\D/g,'');return digits.length>=12&&digits.startsWith('55')?digits.slice(2):digits}
+const playerPhoneMatches=(a,b)=>{const x=phoneDigits(a),y=phoneDigits(b);return x===y||(x.length>=9&&y.length>=9&&x.slice(-9)===y.slice(-9))};
+const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+function fridayWindowOpen(){const weekday=new Date(`${today}T00:00:00Z`).getUTCDay();return weekday===5||weekday===6||weekday===0}
+function upcoming(){const playerGames=currentUser?.role==='player'?(sharedGameRosters.length?sharedGameRosters:currentPlayerData?.rosterGames||[]):[];const candidates=playerGames.length?playerGames:state.games;const eligible=candidates.filter(g=>g.status!=='cancel'&&g.status!=='played'&&(fridayWindowOpen()?g.date>today:g.date>=today));return eligible.sort((a,b)=>a.date.localeCompare(b.date))[0]}
+function nextWeeklyGame(game){return state.games.filter(item=>item.id!==game.id&&item.status!=='cancel'&&item.date>game.date).sort((a,b)=>a.date.localeCompare(b.date))[0]||null}
+function autoDistributeGameTeams(game){
+ const linePlayers=(game.players||[]).filter(isFieldPlayer),teamCount=2;
+ const teams=(Array.isArray(game.teams)?game.teams:structuredClone(defaultTeams)).slice(0,teamCount);
+ while(teams.length<teamCount)teams.push(structuredClone(defaultTeams[teams.length]));
+ teams.forEach(team=>{team.playerIds=[];team.players=[];team.goalkeeper=''});
+ const counts=teams.map(()=>0);
+ for(const entry of linePlayers.slice(0,16)){
+  const player=state.players.find(item=>item.id===entry.playerId)||findTeamPlayer(entry.name);
+  const teamIndex=counts.indexOf(Math.min(...counts));
+  teams[teamIndex].players.push(entry.name);
+  if(player?.id)teams[teamIndex].playerIds.push(player.id);
+  counts[teamIndex]++;
+ }
+ const keepers=(game.players||[]).filter(entry=>entry.position==='Goleiro'&&entry.participationConfirmed!==false);
+ keepers.forEach((entry,index)=>{if(index<teams.length)teams[index].goalkeeper=entry.name});
+ game.teams=teams;
+}
+function addPlayerToSuggestedTeam(game,player,position='Jogador'){
+ if(!game||!player||position==='Churrasco')return;
+ game.teams=(Array.isArray(game.teams)?game.teams:structuredClone(defaultTeams)).slice(0,2);while(game.teams.length<2)game.teams.push(structuredClone(defaultTeams[game.teams.length]));
+ if(position==='Goleiro'){const target=game.teams.find(team=>!team.goalkeeper||!String(team.goalkeeper).trim());if(target)target.goalkeeper=player.name;return}
+ const lineCount=(game.players||[]).filter(isFieldPlayer).length;if(lineCount>16)return;
+ if(!game.teamsEdited){autoDistributeGameTeams(game);return}
+ const key=playerKey(player.name);if(game.teams.some(team=>teamPlayerNames(team).some(name=>playerKey(name)===key)||(team.playerIds||[]).includes(player.id)))return;
+ const target=game.teams.map((team,index)=>({team,index,count:teamPlayerNames(team).length})).filter(item=>item.count<8).sort((a,b)=>a.count-b.count||a.index-b.index)[0]?.team;if(!target)return;
+ const ids=Array.isArray(target.playerIds)?target.playerIds.slice():(target.players||[]).map(name=>findTeamPlayer(name)?.id).filter(Boolean);
+ target.playerIds=[...new Set([...ids,player.id])];target.players=teamPlayerNames(target).concat(player.name).filter((name,index,all)=>all.findIndex(other=>playerKey(other)===playerKey(name))===index);
+}function findGameRosterEntry(game,player){if(!game||!player)return null;const aliases=new Set([player.name,player.nickname,...(player.aliases||[])].filter(Boolean).map(playerKey));return (game.players||[]).find(item=>item.playerId===player.id||aliases.has(playerKey(item.name)))||null}
+function addParticipantToGame(game,player,position='Jogador'){
+ if(!game||!player)return false;
+ game.players=Array.isArray(game.players)?game.players:[];
+ const entry=findGameRosterEntry(game,player);
+ if(entry){if(position==='Jogador'&&entry.position==='Churrasco'&&fieldCountGame(game)>=16)return false;if(position==='Goleiro'&&entry.position!=='Goleiro'&&game.players.filter(item=>item.position==='Goleiro'&&item.participationConfirmed!==false).length>=2)return false;entry.name=player.name;entry.playerId=player.id;if(['Jogador','Goleiro'].includes(position))entry.position=position;if(gameTeamIndex(game,entry)<0)addPlayerToSuggestedTeam(game,player,position);return false}
+ if((game.players||[]).filter(p=>p.position==='Goleiro'&&p.participationConfirmed!==false).length>=2&&position==='Goleiro'||fieldCountGame(game)>=16&&position!=='Goleiro')return false;
+ game.players.push({name:player.name,playerId:player.id,position,attendance:'friday',present:false,paid:false,foodWanted:false,foodPaid:false});
+ addPlayerToSuggestedTeam(game,player,position);
+ return true;
+}
+function ensurePlayerInUpcomingGame(player){
+ const game=upcoming();if(!game||!player)return false;
+ const added=addParticipantToGame(game,player);
+ return added;
+}
+function field(id){return state.fields.find(f=>f.id===id)}
+function fieldCountGame(g){return (g?.players||[]).filter(isFieldPlayer).length}
+function paidCount(g){return (g.players||[]).filter(p=>isFieldPlayer(p)&&p.paid).length}function dueTotal(g){if(!g||g.status==='cancel')return 0;return (g.players||[]).reduce((sum,p)=>sum+((isFieldPlayer(p)||p.gameChargeConfirmed)&&!p.paid?Number(g.fee||0):0)+(g.foodFee&&p.foodWanted&&!p.foodPaid?Number(g.foodFee):0),0)}function gamePaymentTotals(g){
+ const totals={received:0,pending:0,gameReceived:0,gamePending:0,foodReceived:0,foodPending:0};
+ if(!g||g.status==='cancel')return totals;
+ for(const p of g.players||[]){
+  if(p.position!=='Goleiro'&&p.paid)totals.gameReceived+=Number(g.fee||0);
+  else if(isFieldPlayer(p)||p.gameChargeConfirmed)totals.gamePending+=Number(g.fee||0);
+  if(p.foodWanted)totals[p.foodPaid?'foodReceived':'foodPending']+=Number(g.foodFee||0);
+ }
+ totals.received=totals.gameReceived+totals.foodReceived;totals.pending=totals.gamePending+totals.foodPending;return totals;
+}function gamePaymentSummary(g){const t=gamePaymentTotals(g);return `<div class="week-summary" aria-label="Resumo financeiro"><div><span style="font-size:14px">Arrecadado</span><b style="font-size:22px;color:var(--green)">${brl(t.received)}</b><div class="subcell">Jogo: ${brl(t.gameReceived)} · ${esc(g.foodName||'Churrasco')}: ${brl(t.foodReceived)}</div></div><div><span style="font-size:14px">A receber ainda</span><b style="font-size:22px">${brl(t.pending)}</b><div class="subcell">Jogo: ${brl(t.gamePending)} · ${esc(g.foodName||'Churrasco')}: ${brl(t.foodPending)}</div></div></div>`}
+function gameTeamIndex(g,p){const keys=[p.playerId,p.name].filter(Boolean);return (g.teams||[]).findIndex(team=>(team.playerIds||[]).some(id=>keys.includes(id))||teamPlayerNames(team).some(name=>playerKey(name)===playerKey(p.name))||(p.position==='Goleiro'&&playerKey(team.goalkeeper)===playerKey(p.name)))}
+function adminWeeklyRoster(g){
+ if(!g)return '';
+ const teams=(g.teams||[]).slice(0,2),rows=(g.players||[]).filter(p=>p.position!=='Churrasco'&&p.participationConfirmed!==false).map((p,index)=>({...p,signupNumber:index+1,teamIndex:gameTeamIndex(g,p)}));
+ const panels=teams.map((team,index)=>{const members=rows.filter(p=>p.position!=='Goleiro'&&p.teamIndex===index);const keepers=rows.filter(p=>p.position==='Goleiro'&&p.teamIndex===index);return '<section class="weekly-team-card team-color-'+(index+1)+'"><div class="weekly-team-head"><strong>'+esc(team.name||'Time 0'+(index+1))+'</strong><span>'+members.length+' jogadores</span></div><div class="week-roster">'+(members.length?members.map(p=>'<div class="week-player"><span class="number">'+String(p.signupNumber).padStart(2,'0')+'</span><span>'+esc(p.name)+'</span><small>Jogador'+(p.importNote?' · '+esc(p.importNote):'')+'</small></div>').join(''):'<div class="team-empty">Aguardando divisão dos administradores.</div>')+'</div>'+(keepers.length?'<div class="weekly-goalkeepers"><b>Goleiro</b>'+keepers.map(p=>'<div class="week-player"><span class="number">G'+p.signupNumber+'</span><span>'+esc(p.name)+'</span><small>Goleiro</small></div>').join('')+'</div>':'')+'</section>'});
+ const waiting=rows.filter(p=>p.teamIndex<0&&p.position!=='Churrasco');
+ return '<div class="weekly-team-grid">'+panels.join('')+(waiting.length?'<section class="weekly-team-card team-color-waiting"><div class="weekly-team-head"><strong>Aguardando divisão</strong><span>'+waiting.length+' inscritos</span></div><div class="week-roster">'+waiting.map(p=>'<div class="week-player"><span class="number">'+String(p.signupNumber).padStart(2,'0')+'</span><span>'+esc(p.name)+'</span><small>'+esc(p.position||'Jogador')+'</small></div>').join('')+'</div></section>':'')+'</div>';
+}
+function gameStatus(g){if(g.status==='closed')return '<span class="pill done">Encerrado</span>';if(g.status==='played')return '<span class="pill done">Realizado</span>';return '<span class="pill open">Inscrições abertas</span>'}
+function navItem(id,icon,label){return `<button class="${page===id?'active':''}" data-page="${id}"><span class="ico">${icon}</span>${label}</button>`}
+function pageTitle(){return ({dashboard:'Visão geral',games:'Jogos',teams:'Times',players:'Participantes',fields:'Gramados',finance:'Pagamentos',polls:'Enquetes',notices:'Avisos',settings:'Configurações'})[page]||'Visão geral'}
+function heading(eyebrow,title,description,actions=''){return `<div class="page-head"><div><div class="eyebrow">${esc(eyebrow)}</div><h1>${esc(title)}</h1><p class="sub">${esc(description)}</p></div>${actions?`<div class="actions">${actions}</div>`:''}</div>`}
+function stat(label,value,foot,icon='•'){return `<article class="card"><div class="stat-top"><span>${esc(label)}</span><span class="stat-icon">${esc(icon)}</span></div><div class="stat-num">${esc(value)}</div><div class="stat-foot">${esc(foot)}</div></article>`}
+function financePage(){const games=state.games.slice().sort((a,b)=>a.date.localeCompare(b.date));const selected=games.find(g=>g.id===rosterGame)||upcoming()||games[0];return `${heading('CONTROLE FINANCEIRO','Pagamentos','Confirme pagamentos recebidos por PIX e confira os valores por jogo.',`<button class="btn" data-action="export">Exportar CSV</button>`)}<div class="panel"><div class="toolbar"><label for="finance-game"><b>Jogo</b></label><select id="finance-game" class="search">${games.map(g=>`<option value="${esc(g.id)}" ${selected?.id===g.id?'selected':''}>${localDate(g.date)} · ${esc(g.time)} · ${esc(field(g.fieldId)?.name||'Gramado')}</option>`).join('')}</select><button class="btn small" data-action="copy-pix">Copiar PIX · ${esc(formatPix(state.pix))}</button></div>${selected?`${gamePaymentSummary(selected)}<div class="payment-legend"><span>${brl(selected.fee)} por jogo${selected.foodFee?` · ${brl(selected.foodFee)} ${esc(selected.foodName||'churrasco')}`:''}</span><span>${brl(gamePaymentTotals(selected).pending)} a receber ainda</span></div><div class="week-payments">${selected.players.slice().sort((a,b)=>Number(b.paid)-Number(a.paid)||(String(a.paidAt||'9999').localeCompare(String(b.paidAt||'9999')))).map(p=>{const index=selected.players.indexOf(p);return `<div class="payment-row"><div class="payment-person"><div class="avatar">${initials(p.name)}</div><div><b>${esc(p.name)}</b><small>${esc(p.position||'Jogador')}${gameTeamIndex(selected,p)>=0?' · '+esc(selected.teams[gameTeamIndex(selected,p)].name):''}</small></div></div><button class="pill ${p.position==='Goleiro'?'done':p.paid?'paid':'pending'}" ${p.position==='Goleiro'?'':'data-action="toggle-pay" data-id="'+esc(selected.id)+'" data-index="'+index+'"'}>${p.position==='Goleiro'?'Isento':p.paid?'Jogo pago ✓':`Jogo · marcar ${brl(selected.fee)}`}</button>${selected.foodFee?(p.foodWanted?`<button class="pill ${p.foodPaid?'paid':'pending'}" data-action="toggle-food" data-id="${esc(selected.id)}" data-index="${index}">Churrasco ${p.foodPaid?'pago ✓':`marcar ${brl(selected.foodFee)}`}</button>`:'<span class="pill done">Churrasco não solicitado</span>'):''}<button class="btn small" data-action="payment" data-id="${esc(selected.id)}" data-index="${index}">Detalhes</button></div>`}).join('')||'<div class="empty">Não há participantes na lista deste jogo.</div>'}</div>`:'<div class="empty">Não há jogos cadastrados.</div>'}</div>`}
+function pageBody(g){return ({dashboard:()=>dashboard(g),games:gamesPage,teams:teamsPage,players:playersPage,fields:fieldsPage,finance:financePage,polls:pollsPage,notices:noticesPage,settings:settingsPage}[page]||(()=>dashboard(g)))()}
 function render(){
  if(cloudEnabled && !currentUser) return renderLogin();
  if(currentUser?.role==='player') return renderPlayerPage();
