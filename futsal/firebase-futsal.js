@@ -214,7 +214,7 @@ export async function signOutAdmin() {
 export function listenToAppData(onData, onError) {
   if (!cloudEnabled) return () => {};
   return firestore.onSnapshot(firestore.doc(db, 'futsalAppData', 'current'), snapshot => {
-    onData(snapshot.exists()?snapshot.data():{fields:[{id:'futsal-field-colegio-legado',name:'Colégio Legado',address:'',maps:'',waze:'',notes:''}],players:[],games:[],payments:[],pix:'',gameFee:0,foodFee:0});
+    onData(snapshot.exists()?snapshot.data():{fields:[{id:'futsal-field-colegio-legado',name:'Colégio Legado',address:'',maps:'',waze:'',notes:''}],players:[],games:[],payments:[],pix:'4896568368',gameFee:10,foodFee:0});
   }, onError);
 }
 export async function saveAppData(data) {
