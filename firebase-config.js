@@ -9,6 +9,11 @@ export const firebaseConfig = {
   messagingSenderId: "662065421067",
   appId: "1:662065421067:web:562401b8a02472166fe00e",
   measurementId: "G-409T38YPR0",
+  adminEmails: [
+    "esli@futebol.com",
+    "maicon@futebol.com",
+    "phdbr68@gmail.com"
+  ],
   adminUids: [
     "RutTVgdXfjdGrFFnbaYmpOO2nJi1",
     "xptgdFErpMV5Ekxa3CRX2SBrdcy1",
