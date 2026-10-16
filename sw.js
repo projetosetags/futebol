@@ -1,4 +1,4 @@
-const CACHE_NAME = "futebol-shell-v52";
+const CACHE_NAME = "futebol-shell-v53";
 const SHELL = [
   "./roster-import.js?v=20261016-presence-v2",
   "./",
@@ -6,7 +6,7 @@ const SHELL = [
   "./jogador.html",
   "./styles.css",
   "./styles.css?v=20261016-boot-recovery-v1",
-  "./app.js?v=20261016-roster-edit-v2",
+  "./app.js?v=20261016-roster-edit-v3",
   "./event-0910-photos.js?v=20261015-scroll-v1",
   "./firebase.js",
   "./firebase.js?v=20261016-presence-v2",
