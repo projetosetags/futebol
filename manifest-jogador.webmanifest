@@ -2,7 +2,7 @@
   "name": "Futebol Jogador",
   "short_name": "Futebol Jogador",
   "description": "Acesso dos jogadores do Futebol Society Gramado.",
-  "start_url": "./jogador.html",
+  "start_url": "./jogador.html?app=20261016-ready-v1",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
