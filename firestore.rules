@@ -207,7 +207,7 @@ service cloud.firestore {
     }
 
     match /playerAccessRequests/{uid} {
-      allow create: if isAdmin() || (request.auth != null
+      allow create: if isSystemAdmin() || (request.auth != null
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['firstName', 'fullName', 'nickname', 'phone', 'createdAt', 'status'])
         && request.resource.data.firstName is string
@@ -220,20 +220,20 @@ service cloud.firestore {
         && request.resource.data.phone.matches('^[0-9]{9,11}$')
         && request.resource.data.createdAt is string
         && request.resource.data.status == 'approved');
-      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
-      allow update: if isAdmin() || (request.auth != null
+      allow read: if isSystemAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow update: if isSystemAdmin() || (request.auth != null
         && request.auth.uid == uid
         && resource.data.status == 'pending'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && request.resource.data.status == 'approved');
-      allow delete: if isAdmin();
+      allow delete: if isSystemAdmin();
     }
     // Índice por hash de nome + telefone local para aceitar login com nome, nome completo ou apelido.
     // O documento contém apenas o e-mail sintético do Firebase, sem expor o telefone.
     match /playerLoginAliases/{aliasId} {
       allow get: if true;
-      allow list: if isAdmin();
-      allow create, update, delete: if isAdmin();
+      allow list: if isSystemAdmin();
+      allow create, update, delete: if isSystemAdmin();
     }
     // Dados públicos da escalação, sem telefones, pagamentos ou comprovantes.
     match /gameRosters/{gameId} {
@@ -241,8 +241,8 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
     match /playerData/{uid} {
-      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid && resource.data.approved == true);
-      allow create: if isAdmin() || (request.auth != null
+      allow read: if isSystemAdmin() || (request.auth != null && request.auth.uid == uid && resource.data.approved == true);
+      allow create: if isSystemAdmin() || (request.auth != null
         && request.auth.uid == uid
         && exists(/databases/$(database)/documents/playerAccessRequests/$(uid))
         && get(/databases/$(database)/documents/playerAccessRequests/$(uid)).data.status == 'approved'
@@ -257,8 +257,8 @@ service cloud.firestore {
         && request.resource.data.phone.matches('^[0-9]{9,11}$')
         && request.resource.data.approved == true
         && request.resource.data.createdAt is string);
-      allow delete: if isAdmin();
-      allow update: if isAdmin() || (request.auth != null
+      allow delete: if isSystemAdmin();
+      allow update: if isSystemAdmin() || (request.auth != null
         && request.auth.uid == uid
         && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceChoices'])
           && request.resource.data.attendanceChoices is map
@@ -271,15 +271,180 @@ service cloud.firestore {
           && request.resource.data.displayNickname.size() <= 40));
     }
     match /futsalAppData/{id} {allow read,write:if isFutsalAdmin();}
-match /futsalNotices/{noticeId}
-match /futsalPolls/{pollId}
-match /futsalPollVotes/{voteId}
-match /futsalPollTallies/{tallyId}
-match /futsalGameGallery/{photoId}
-match /futsalGameAwardBallots/{gameId}
-match /futsalGameAwardVotes/{voteId}
-match /futsalGameRegistrations/{gameId}
-match /futsalGameRosters/{gameId}
+match /futsalNotices/{noticeId} {
+      allow read: if isFutsalAdmin() || request.auth != null;
+      allow write: if isFutsalAdmin();
+    }
+match /futsalPolls/{pollId} {
+      // Todos os usuários autenticados podem consultar as enquetes; só os administradores as alteram.
+      allow read: if isFutsalAdmin() || request.auth != null;
+      allow write: if isFutsalAdmin();
+    }
+match /futsalPollVotes/{voteId} {
+      function pollPath(pollId) {
+        return /databases/$(database)/documents/futsalPolls/$(pollId);
+      }
+      function tallyPath(pollId, optionKey) {
+        return /databases/$(database)/documents/futsalPollTallies/$(pollId + '-' + optionKey);
+      }
+      function voteIsOpen(pollId) {
+        let poll = get(pollPath(pollId)).data;
+        return !('expiresAt' in poll)
+          || poll.expiresAt == ''
+          || (('expiresAtMs' in poll) && request.time.toMillis() <= poll.expiresAtMs);
+      }
+      allow get: if isFutsalAdmin() || (request.auth != null && resource.data.voterId == request.auth.uid);
+      allow list: if isFutsalAdmin() || (request.auth != null && resource.data.voterId == request.auth.uid);
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'voterId', 'createdAt'])
+        && request.resource.data.pollId is string
+        && request.resource.data.optionIndex is string
+        && request.resource.data.optionIndex.matches('^(0|[1-9][0-9]*)
+      allow read, write: if false;
+    }
+  }
+}
+
+)
+        && request.resource.data.voterId == request.auth.uid
+        && request.resource.data.createdAt is string
+        && voteId == request.resource.data.pollId + '-' + request.auth.uid
+        && exists(pollPath(request.resource.data.pollId))
+        && int(request.resource.data.optionIndex) < get(pollPath(request.resource.data.pollId)).data.options.size()
+        && voteIsOpen(request.resource.data.pollId)
+        && !exists(/databases/$(database)/documents/futsalPollVotes/$(voteId))
+        && existsAfter(tallyPath(request.resource.data.pollId, request.resource.data.optionIndex))
+        && getAfter(tallyPath(request.resource.data.pollId, request.resource.data.optionIndex)).data.pollId == request.resource.data.pollId
+        && getAfter(tallyPath(request.resource.data.pollId, request.resource.data.optionIndex)).data.optionIndex == request.resource.data.optionIndex;
+      allow update, delete: if isFutsalAdmin();
+    }
+match /futsalPollTallies/{tallyId} {
+      function pollPath(pollId) {
+        return /databases/$(database)/documents/futsalPolls/$(pollId);
+      }
+      function pairedNewVote(pollId, optionKey) {
+        let votePath = /databases/$(database)/documents/futsalPollVotes/$(pollId + '-' + request.auth.uid);
+        return !exists(votePath)
+          && existsAfter(votePath)
+          && getAfter(votePath).data.pollId == pollId
+          && getAfter(votePath).data.optionIndex == optionKey
+          && getAfter(votePath).data.voterId == request.auth.uid;
+      }
+      function validPollOption(pollId, optionKey) {
+        return exists(pollPath(pollId))
+          && optionKey is string
+          && optionKey.matches('^(0|[1-9][0-9]*)
+      allow read, write: if false;
+    }
+  }
+}
+
+)
+          && int(optionKey) < get(pollPath(pollId)).data.options.size();
+      }
+      allow read: if isFutsalAdmin() || request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
+        && request.resource.data.pollId is string
+        && request.resource.data.optionIndex is string
+        && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
+        && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
+        && request.resource.data.count == 1
+        && pairedNewVote(request.resource.data.pollId, request.resource.data.optionIndex);
+      allow update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['pollId', 'optionIndex', 'count'])
+        && request.resource.data.pollId == resource.data.pollId
+        && request.resource.data.optionIndex is string
+        && request.resource.data.optionIndex == resource.data.optionIndex
+        && tallyId == request.resource.data.pollId + '-' + request.resource.data.optionIndex
+        && validPollOption(request.resource.data.pollId, request.resource.data.optionIndex)
+        && request.resource.data.count == resource.data.count + 1
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count'])
+        && pairedNewVote(request.resource.data.pollId, request.resource.data.optionIndex);
+      allow delete: if isFutsalAdmin();
+    }
+match /futsalGameGallery/{photoId} {
+      allow read: if isFutsalAdmin() || request.auth != null;
+      allow write: if isFutsalAdmin();
+    }
+match /futsalGameAwardBallots/{gameId} {
+      allow read: if isFutsalAdmin() || request.auth != null;
+      allow write: if isFutsalAdmin();
+    }
+match /futsalGameAwardVotes/{voteId} {
+      function ballot() {
+        return get(/databases/$(database)/documents/futsalGameAwardBallots/$(request.resource.data.gameId)).data;
+      }
+      allow get, list: if isFutsalAdmin() || request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['gameId', 'teamId', 'candidatePlayerId', 'voterId', 'createdAt'])
+        && request.resource.data.gameId is string
+        && request.resource.data.teamId in ['team-1', 'team-2', 'team-3']
+        && request.resource.data.candidatePlayerId is string
+        && request.resource.data.voterId == request.auth.uid
+        && voteId == request.resource.data.gameId + '-' + request.resource.data.teamId + '-' + request.auth.uid
+        && request.resource.data.createdAt is string
+        && ballot().eligibleVoterIds.hasAny([request.auth.uid])
+        && ballot().teams[request.resource.data.teamId].candidateIds.hasAny([request.resource.data.candidatePlayerId])
+        && request.time >= ballot().opensAt
+        && request.time <= ballot().closesAt
+        && !exists(/databases/$(database)/documents/futsalGameAwardVotes/$(voteId));
+      allow update, delete: if isFutsalAdmin();
+    }
+match /futsalGameRegistrations/{gameId} {
+      function profile() {
+        return get(/databases/$(database)/documents/playerData/$(request.auth.uid)).data;
+      }
+      function playerId() { return profile().playerId; }
+      function game() {
+        return get(/databases/$(database)/documents/futsalGameRosters/$(gameId)).data;
+      }
+      function openGame() {
+        return request.auth != null && profile().approved == true
+          && profile().playerId is string
+          && game().registrationMode == 'first-confirmed-v1'
+          && game().status != 'played' && game().status != 'cancel'
+          && request.time.toMillis() <= game().signupClosesAtMs;
+      }
+      function validNewSlot(slot, keeper, sequence) {
+        return slot.keys().hasOnly(['uid', 'playerId', 'name', 'sequence', 'joinedAt'])
+          && slot.uid == request.auth.uid && slot.playerId == playerId()
+          && slot.name == profile().name && slot.name is string
+          && slot.sequence == sequence && slot.sequence is int
+          && slot.joinedAt == request.time
+          && (keeper ? profile().get('gamePositions', {}).get(gameId, 'Jogador') == 'Goleiro'
+            : profile().get('gamePositions', {}).get(gameId, 'Jogador') != 'Goleiro');
+      }
+      function validSlots(data, oldLines, oldKeepers, oldSequence) {
+        let id = playerId();
+        let additions = data.lineSlots.diff(oldLines).addedKeys().size() + data.keeperSlots.diff(oldKeepers).addedKeys().size();
+        return data.keys().hasOnly(['gameId', 'date', 'version', 'lineCapacity', 'keeperCapacity', 'lineSlots', 'keeperSlots', 'nextSequence', 'updatedAt'])
+          && data.gameId == gameId && data.date == game().date && data.version == 1
+          && data.lineCapacity == 16 && data.keeperCapacity == 2
+          && data.lineSlots is map && data.keeperSlots is map
+          && data.lineSlots.size() <= 16 && data.keeperSlots.size() <= 2
+          && data.lineSlots.diff(oldLines).affectedKeys().hasOnly([id])
+          && data.keeperSlots.diff(oldKeepers).affectedKeys().hasOnly([id])
+          && !(id in data.lineSlots && id in data.keeperSlots)
+          && data.nextSequence is int && data.nextSequence == oldSequence + (additions > 0 ? 1 : 0)
+          && data.updatedAt == request.time
+          && (!(id in data.lineSlots) || data.lineSlots[id] == oldLines.get(id, null) || validNewSlot(data.lineSlots[id], false, data.nextSequence))
+          && (!(id in data.keeperSlots) || data.keeperSlots[id] == oldKeepers.get(id, null) || validNewSlot(data.keeperSlots[id], true, data.nextSequence));
+      }
+      allow read: if request.auth != null;
+      allow create: if isFutsalAdmin() || (openGame() && validSlots(request.resource.data, {}, {}, 0));
+      allow update: if isFutsalAdmin() || (openGame()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lineSlots', 'keeperSlots', 'nextSequence', 'updatedAt'])
+        // Jogadores podem reservar ou liberar a própria vaga; só administradores podem remover outras pessoas.
+        && request.resource.data.lineSlots.diff(resource.data.lineSlots).removedKeys().hasOnly([playerId()])
+        && request.resource.data.keeperSlots.diff(resource.data.keeperSlots).removedKeys().hasOnly([playerId()])
+        && validSlots(request.resource.data, resource.data.lineSlots, resource.data.keeperSlots, resource.data.nextSequence));
+      allow delete: if isFutsalAdmin();
+    }
+match /futsalGameRosters/{gameId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isFutsalAdmin();
+    }
     match /{document=**} {
       allow read, write: if false;
     }
