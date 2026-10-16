@@ -564,7 +564,7 @@ function displayPhone(phone){const digits=String(phone||'').replace(/\D/g,'');re
 const playerPhoneMatches=(a,b)=>{const x=phoneDigits(a),y=phoneDigits(b);return x===y||(x.length>=9&&y.length>=9&&x.slice(-9)===y.slice(-9))};
 const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function fridayWindowOpen(){const weekday=new Date(`${today}T00:00:00Z`).getUTCDay();return weekday===5||weekday===6||weekday===0}
-function upcoming(){const playerGames=currentUser?.role==='player'?(sharedGameRosters.length?sharedGameRosters:currentPlayerData?.rosterGames||[]):[];const candidates=playerGames.length?playerGames:state.games;const eligible=candidates.filter(g=>g.status!=='cancel'&&g.status!=='played'&&(fridayWindowOpen()?g.date>today:g.date>=today));return eligible.sort((a,b)=>a.date.localeCompare(b.date))[0]}
+function upcoming(){const playerGames=currentUser?.role==='player'?(sharedGameRosters.length?sharedGameRosters:currentPlayerData?.rosterGames||[]):[];const candidates=playerGames.length?playerGames:state.games;const eligible=candidates.filter(g=>g.status!=='cancel'&&g.status!=='played'&&g.date>=today);return eligible.sort((a,b)=>a.date.localeCompare(b.date))[0]}
 function nextWeeklyGame(game){return state.games.filter(item=>item.id!==game.id&&item.status!=='cancel'&&item.date>game.date).sort((a,b)=>a.date.localeCompare(b.date))[0]||null}
 function autoDistributeGameTeams(game){
  const linePlayers=(game.players||[]).filter(isFieldPlayer),teamCount=2;
