@@ -13,15 +13,33 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261015-scroll-v1" />
+  <link rel="stylesheet" href="styles.css?v=20261016-boot-recovery-v1" />
+  <style>
+    .boot-recovery{max-width:520px;margin:12vh auto;padding:28px;background:#fff;border:1px solid #dfe8e2;border-radius:20px;box-shadow:0 16px 48px #10261a18;color:#17241c;font:16px/1.55 system-ui,sans-serif}
+    .boot-recovery h1{margin:0 0 12px;font-size:1.5rem}.boot-recovery p{margin:0 0 18px;color:#536158}
+    .boot-recovery button{border:0;border-radius:12px;background:#176b43;color:white;font:600 1rem system-ui,sans-serif;padding:12px 18px;cursor:pointer}
+    .boot-recovery a{color:#176b43}
+  </style>
 </head>
 <body>
   <div id="app" class="shell"></div>
   <div id="modal-root"></div>
   <div id="toast-root" aria-live="polite"></div>
-  <script type="module" src="app.js?v=20261015-scroll-v1"></script>
+  <script>
+    (() => {
+      const recover = () => {
+        const root = document.getElementById('app');
+        if (!root || root.childElementCount) return;
+        root.className = 'shell';
+        root.innerHTML = '<main class="boot-recovery" role="alert"><h1>O app não conseguiu iniciar</h1><p>Confira sua conexão e abra este endereço no Safari ou Chrome. Se estiver usando um navegador dentro de outro app, escolha “Abrir no navegador”.</p><p>Se continuar sem abrir, o navegador pode estar bloqueando o carregamento do Firebase.</p><button type="button" onclick="location.replace(location.pathname + \'?reabrir=\' + Date.now())">Tentar abrir novamente</button></main>';
+      };
+      window.addEventListener('error', () => setTimeout(recover, 0));
+      window.addEventListener('unhandledrejection', () => setTimeout(recover, 0));
+      setTimeout(recover, 8000);
+    })();
+  </script>
+  <script type="module" src="app.js?v=20261016-boot-recovery-v1"></script>
   <script type="module" src="craques.js?v=20261007-two-teams-v2"></script>
   <script>if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));</script>
 </body>
 </html>
-
