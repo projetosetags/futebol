@@ -1023,7 +1023,10 @@ function playerForm(p={}){
   else{target={...d,name:newName,nickname:d.nickname.trim(),phone:newPhone,id:'p'+Date.now(),active:d.active==='true'};state.players.push(target);if(target.active)ensurePlayerInUpcomingGame(target)}
   if(measurement)target.healthRecords=[...(target.healthRecords||[]),measurement];
   const button=form.querySelector('button[type="submit"]');if(button)button.disabled=true;
-  const saved=await persist();if(!saved){state=before;localStorage.setItem(KEY,JSON.stringify(state));if(button)button.disabled=false;return}
+  const previousAccounts=playerAccounts;
+  playerAccounts=playerAccounts.map(account=>account.playerId===target.id?{...account,displayName:target.name,displayNickname:target.nickname}:account);
+  const saved=await persist();if(!saved){state=before;playerAccounts=previousAccounts;localStorage.setItem(KEY,JSON.stringify(state));if(button)button.disabled=false;return}
+  await playerSyncPromise;
   closeModal();render();toast(measurement?'Participante e registro de IMC salvos.':'Participante salvo.');
  };
 }
