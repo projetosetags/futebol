@@ -12,12 +12,14 @@ export const firebaseConfig = {
   adminEmails: [
     "esli@futebol.com",
     "maicon@futebol.com",
-    "phdbr68@gmail.com"
+    "phdbr68@gmail.com",
+    "pablo@futebol.com"
   ],
   adminUids: [
     "RutTVgdXfjdGrFFnbaYmpOO2nJi1",
     "xptgdFErpMV5Ekxa3CRX2SBrdcy1",
     "jmJvH0W7uwdCMlUeyJSWnC4Hd103",
-    "45AaXndEroRoLYEf1SDFMYBLXZw2"
+    "45AaXndEroRoLYEf1SDFMYBLXZw2",
+    "Nb7pZjhf3GN3oxPy15szUjdwVwQ2"
   ]
 };
