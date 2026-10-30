@@ -1027,6 +1027,9 @@ function playerForm(p={}){
   playerAccounts=playerAccounts.map(account=>account.playerId===target.id?{...account,displayName:target.name,displayNickname:target.nickname}:account);
   const saved=await persist();if(!saved){state=before;playerAccounts=previousAccounts;localStorage.setItem(KEY,JSON.stringify(state));if(button)button.disabled=false;return}
   await playerSyncPromise;
+  try{for(const account of playerAccounts.filter(account=>account.playerId===target.id))await updateMyPlayerProfile(account.id,target.name,target.nickname)}
+  catch(error){if(button?.isConnected)button.disabled=false;toast('Cadastro salvo, mas o apelido do acesso não sincronizou. Salve novamente para tentar.');return}
+  playerAccounts=playerAccounts.map(account=>account.playerId===target.id?{...account,displayName:target.name,displayNickname:target.nickname}:account);
   closeModal();render();toast(measurement?'Participante e registro de IMC salvos.':'Participante salvo.');
  };
 }
