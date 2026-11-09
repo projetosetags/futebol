@@ -1,4 +1,4 @@
-const CACHE_NAME = "futebol-shell-v75";
+const CACHE_NAME = "futebol-shell-v76";
 const SHELL = [
   "./roster-import.js?v=20261016-presence-v2",
   "./",
@@ -20,7 +20,9 @@ const SHELL = [
   "./icons/adm-icone-integral-512.png?v=20261109-icone-integral-v4",
   "./icons/jogador-icone-integral-180.png?v=20261109-icone-integral-v4",
   "./icons/jogador-icone-integral-192.png?v=20261109-icone-integral-v4",
-  "./icons/jogador-icone-integral-512.png?v=20261109-icone-integral-v4"
+  "./icons/jogador-icone-integral-512.png?v=20261109-icone-integral-v4",
+  "./icons/adm-apple-touch.png",
+  "./icons/jogador-apple-touch.png"
 ];
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
