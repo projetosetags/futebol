@@ -1,4 +1,4 @@
-const CACHE_NAME = "futebol-shell-v73";
+const CACHE_NAME = "futebol-shell-v74";
 const SHELL = [
   "./roster-import.js?v=20261016-presence-v2",
   "./",
@@ -13,14 +13,14 @@ const SHELL = [
   "./firebase.js?v=20261016-player-own-cancel-v1",
   "./firebase-config.js",
   "./firebase-sdk.bundle.js?v=20261016-local-v1",
-  "./manifest-lideranca.webmanifest?v=20261109-real-ball-v2",
-  "./manifest-jogador.webmanifest?v=20261109-real-ball-v2",
-  "./icons/futebol-lideranca-180.png?v=20261109-real-ball-v2",
-  "./icons/futebol-lideranca-192.png?v=20261109-real-ball-v2",
-  "./icons/futebol-lideranca-512.png?v=20261109-real-ball-v2",
-  "./icons/futebol-jogador-180.png?v=20261109-real-ball-v2",
-  "./icons/futebol-jogador-192.png?v=20261109-real-ball-v2",
-  "./icons/futebol-jogador-512.png?v=20261109-real-ball-v2"
+  "./manifest-lideranca.webmanifest?v=20261109-ball-icon-v3",
+  "./manifest-jogador.webmanifest?v=20261109-ball-icon-v3",
+  "./icons/adm-bola-fotografica-180.png?v=20261109-ball-icon-v3",
+  "./icons/adm-bola-fotografica-192.png?v=20261109-ball-icon-v3",
+  "./icons/adm-bola-fotografica-512.png?v=20261109-ball-icon-v3",
+  "./icons/jogador-bola-fotografica-180.png?v=20261109-ball-icon-v3",
+  "./icons/jogador-bola-fotografica-192.png?v=20261109-ball-icon-v3",
+  "./icons/jogador-bola-fotografica-512.png?v=20261109-ball-icon-v3"
 ];
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
