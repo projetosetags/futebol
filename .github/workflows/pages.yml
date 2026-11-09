@@ -6,6 +6,8 @@ on:
     paths:
       - 'index.html'
       - 'jogador.html'
+      - 'a.html'
+      - 'j.html'
       - 'sw.js'
       - 'app.js'
       - 'firebase.js'
